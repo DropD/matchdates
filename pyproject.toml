@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "matchdates"
+version = "0.1.0"
+description = ""
+authors = ["DropD"]
+readme = "README.md"
+packages = [{include = "matchdates", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+scrapy = "^2.10.1"
+pendulum = "^2.1.2"
+pymongo = "^4.5.0"
+umongo = "^3.1.0"
+tabulate = "^0.9.0"
+click = "^8.1.7"
+typing-extensions = "^4.8.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "*"
+
+[tool.poetry.scripts]
+mada = "matchdates.cli:main"
+
+[tool.ruff]
+line-length = 100
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
