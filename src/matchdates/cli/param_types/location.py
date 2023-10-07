@@ -2,7 +2,7 @@ from typing import Optional
 
 import click
 
-from ... import models
+from matchdates import models
 
 
 class Location(click.Choice):

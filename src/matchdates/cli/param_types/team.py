@@ -1,6 +1,6 @@
 import click
 
-from ... import models, queries
+from matchdates import models, queries
 
 
 class Team(click.Choice):
