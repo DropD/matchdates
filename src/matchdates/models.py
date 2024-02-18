@@ -138,10 +138,10 @@ def load_match_date_from_upstream(
     ) -> MatchDateFromDataResult:
     """Find existing match date (update if necessary) or add a new one from upstream."""
     existing = MatchDate.find_one({"url": url})
-    date = pendulum.DateTime.fromisoformat(date).in_timezone("Europe/Zurich")
+    date = date_utils.iso_to_std_datetime(date)
     if existing:
         change_reasons = []
-        if date_utils.enhance(existing.date) != date:
+        if existing.date != date:
             change_reasons.append(MatchDateChangeReason.DATE)
         if existing.location.fetch() != location:
             change_reasons.append(MatchDateChangeReason.LOCATION)
@@ -151,7 +151,7 @@ def load_match_date_from_upstream(
                 date=existing.date,
                 location=existing.location,
                 match=existing,
-                archivation_date=pendulum.now(tz="Europe/Zurich")
+                archivation_date=pendulum.now()
             )
             existing.update(
                 {

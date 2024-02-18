@@ -19,7 +19,7 @@ def match_filter_by_team(team_name: str) -> dict[str, dict[str, str]]:
     }
 
 
-def match_group_by_mach_day() -> dict[str, dict[str, Any]]:
+def match_group_by_match_day() -> dict[str, dict[str, Any]]:
     return {
         "$group": {
             "_id": {
@@ -110,7 +110,7 @@ class MatchClashResult:
 def match_same_day_for_team(team_name: str) -> Iterator[MatchClashResult]:
     query = models.MatchDate.collection.aggregate([
         {"$match": match_filter_by_team(team_name)},
-        match_group_by_mach_day(),
+        match_group_by_match_day(),
         {"$match": {"count": {"$gt": 1}}}
     ])
     for item in query:

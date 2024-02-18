@@ -16,11 +16,13 @@ def list_items():
 @list_items.command("teams")
 def teams():
     """List teams"""
-    click.echo(tabulate.tabulate([
+    team_names = [
         [i] for i in models.MatchDate.collection.aggregate([
             queries.match_list_field_values("home_team")
         ]).next()["teams"]
-    ]))
+    ]
+    team_names.sort()
+    click.echo(tabulate.tabulate(team_names))
 
 
 @list_items.command("urls")

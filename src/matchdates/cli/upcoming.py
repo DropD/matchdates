@@ -12,9 +12,9 @@ def by_date(match_date: models.MatchDate) -> pendulum.DateTime:
 
 @main.command("upcoming")
 @click.argument("amount", type=int, default=7)
-@click.option("--unit", type=click.Choice(["days", "weeks", "months"]), default="days")
+@click.option("--unit", type=click.Choice(["days", "weeks", "months"]), default="days", help="The unit for AMOUNT")
 def upcoming(amount, unit):
-    """Display matches on DAY"""
+    """Display a certain AMOUNT of matches in the future"""
     today = pendulum.today().date()
     matches = list(
         models.MatchDate.find(

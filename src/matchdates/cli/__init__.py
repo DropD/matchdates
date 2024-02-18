@@ -5,6 +5,7 @@ from .on_date import on_date
 from .upcoming import upcoming
 from .list_items import list_items
 from .show import show
+from .calendar import calendar
 
 
-__all__ = ["main", "reload", "scan", "on_date", "upcoming", "list_items", "show"]
+__all__ = ["main", "reload", "scan", "on_date", "upcoming", "list_items", "show", "calendar"]

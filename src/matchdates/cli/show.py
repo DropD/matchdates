@@ -30,7 +30,7 @@ def match(match: models.MatchDate) -> None:
     click.echo(tabulate.tabulate(
         _style_info_table(
             [
-                ("Time:", date_utils.enhance(match.date).format("dd, DD.MM.YYYY")),
+                ("Time:", date_utils.enhance(match.date).format("dd, DD.MM.YYYY HH:mm")),
                 ("Url:", "https://sb.tournamentsoftware.com" + match.url),
                 ("MatchNr:", match.url.rsplit("/")[-1]),
                 ("Location Name:", location.name),

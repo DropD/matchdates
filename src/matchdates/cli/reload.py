@@ -1,17 +1,20 @@
+import json
+import pathlib
+
 import click
+import pendulum
+import textwrap
+from scrapy import crawler
 
 from .main import main
+from . import constants
+from .. import datespider, models
 
 
 @main.command("reload")
 @click.option("--allow-rescrape/--no-allow-rescrape", default=True)
-def reload(allow_rescrape):
+def reload(allow_rescrape: bool) -> None:
     """Grab the dates from online and update the db."""
-    import json
-    import pathlib
-
-    from . import datespider
-    from scrapy import crawler
 
     datafiles = [
         i for i in pathlib.Path().iterdir() if i.stem.startswith("matchdates")
@@ -47,7 +50,7 @@ def reload(allow_rescrape):
         match location_result.status:
             case models.DocumentFromDataStatus.CHANGED:
                 click.echo(f"Location address change: {location_result.location.name}")
-                click.echo(textwrap.indent("\n".join(location_result.diff), INDENT))
+                click.echo(textwrap.indent("\n".join(location_result.diff), constants.INDENT))
             case models.DocumentFromDataStatus.NEW:
                 click.echo(f"New Location found: {location_result.location.name}")
             case _:
@@ -65,13 +68,13 @@ def reload(allow_rescrape):
                     click.echo(
                         textwrap.indent(
                             str(match_result.match_date),
-                            INDENT
+                            constants.INDENT
                         )
                     )
                     click.echo(
                         textwrap.indent(
-                            f"New Date: {match_result.archive_entry.date}",
-                            INDENT
+                            f"Old Date: {match_result.archive_entry.date}",
+                            constants.INDENT
                         )
                     )
                 if models.MatchDateChangeReason.LOCATION in match_result.change_reasons:
@@ -79,12 +82,12 @@ def reload(allow_rescrape):
                     click.echo(
                         textwrap.indent(
                             str(match_result.match_date),
-                            INDENT
+                            constants.INDENT
                         )
                     )
                     click.echo(
                         textwrap.indent(
-                            f"New Location: {match_result.archive_entry.location.fetch().name}",
-                            INDENT
+                            f"Old Location: {match_result.archive_entry.location.fetch().name}",
+                            constants.INDENT
                         )
                     )
