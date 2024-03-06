@@ -1,0 +1,14 @@
+[crawling]
+domain = "swiss-badminton.ch"
+league_uuid = "997197CF-B35F-40FC-983A-0E8FD2D5DC8E"
+draws = [14, 61, 64, 66, 71]
+
+[crawling.cookies]
+lvt = "LHis604hoJdm5up8jgJ++2VsoLf9YSlDV9SKo86ZuAA="
+st = "l=2055&exp=45220.6520639931&c=1&cp=48"
+
+[display]
+club_name = "BC Zürich-Affoltern"
+
+[database]
+mongodb = "mongodb://127.0.0.1:27017"

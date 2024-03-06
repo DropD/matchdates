@@ -4,6 +4,11 @@ from typing import Iterator, Optional
 import pendulum
 import scrapy
 
+from . import settings
+
+
+SETTINGS = settings.SETTINGS["crawling"]
+
 
 @dataclasses.dataclass
 class Location:
@@ -22,16 +27,12 @@ class MatchDate:
 
 class MatchDateSpider(scrapy.Spider):
     name = "matchdatespider"
-    allowed_domains = ["swiss-badminton.ch"]
+    allowed_domains = [SETTINGS["domain"]]
     start_urls = [
-        f"https://www.swiss-badminton.ch/league/997197CF-B35F-40FC-983A-0E8FD2D5DC8E/draw/{i}"
-        for i in [14, 61, 64, 66, 71]
-        # for i in [61]
+        f"https://www.{SETTINGS['domain']}/league/{SETTINGS['league_uuid']}/draw/{i}"
+        for i in SETTINGS["draws"]
     ]
-    cookies = {
-        "lvt": "LHis604hoJdm5up8jgJ++2VsoLf9YSlDV9SKo86ZuAA=",
-        "st": "l=2055&exp=45220.6520639931&c=1&cp=48",
-    }
+    cookies = SETTINGS["cookies"]
     inspect_counter = 0
 
     def start_requests(self) -> Iterator[scrapy.http.Request]:

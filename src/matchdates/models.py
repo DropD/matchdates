@@ -11,10 +11,14 @@ from typing_extensions import Self
 from umongo import fields
 
 from . import date_utils
+from . import settings
+
+
+SETTINGS = settings.SETTINGS["database"]
 
 
 def get_db() -> pymongo.database.Database:
-    client = pymongo.MongoClient("mongodb://127.0.0.1:27017")
+    client = pymongo.MongoClient(SETTINGS["mongodb"])
     return client.matchdates
 
 
