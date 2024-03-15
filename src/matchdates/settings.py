@@ -1,5 +1,6 @@
 import pathlib
 
+import scrapy
 import toml
 
 
@@ -18,3 +19,7 @@ def get_settings_file() -> pathlib.Path:
 
 
 SETTINGS = toml.load(get_settings_file())
+
+# scrapy setting
+BOT_NAME = "mada"
+SPIDER_MODULES = "matchdates.datespider"
