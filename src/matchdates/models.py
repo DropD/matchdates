@@ -1,14 +1,16 @@
 import dataclasses
 import difflib
 import enum
-from typing import Optional
+import textwrap
+from typing import Optional, Iterator
 
 import pendulum
 import pymongo
 import umongo
 import umongo.frameworks
+import tabulate
 from typing_extensions import Self
-from umongo import fields
+from umongo import fields, validate
 
 from . import date_utils
 from . import settings
@@ -50,6 +52,149 @@ class MatchDate(umongo.Document):
         return (
             f"{self.home_team} vs {self.away_team} on {self.date} at {self.location.fetch().name}"
         )
+
+    @property
+    def matchnr(self) -> str:
+        return self.url.rsplit("/", 1)[1]
+
+
+@INSTANCE.register
+class Player(umongo.Document):
+    url = fields.StringField(required=True, unique=True)
+    name = fields.StringField(required=True)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+@INSTANCE.register
+class DoublesPair(umongo.Document):
+    first = fields.ReferenceField(Player)
+    second = fields.ReferenceField(Player)
+
+    def __str__(self) -> str:
+        return f"{self.first.fetch()} / {self.second.fetch()}"
+
+
+@INSTANCE.register
+class Set(umongo.EmbeddedDocument):
+    home_points = fields.IntegerField(validate=validate.Range(min=0, max=30))
+    away_points = fields.IntegerField(validate=validate.Range(min=0, max=30))
+
+    def __str__(self) -> str:
+        return f"{self.home_points} : {self.away_points}"
+
+
+@INSTANCE.register
+class SinglesResult(umongo.EmbeddedDocument):
+    home_player = fields.ReferenceField(Player, allow_none=True)
+    away_player = fields.ReferenceField(Player, allow_none=True)
+    set_1 = fields.EmbeddedField(Set, allow_none=True)
+    set_2 = fields.EmbeddedField(Set, allow_none=True)
+    set_3 = fields.EmbeddedField(Set, allow_none=True)
+    home_won = fields.BoolField(required=True)
+
+    @property
+    def sets(self) -> Iterator[Set]:
+        if self.set_1:
+            yield self.set_1
+        if self.set_2:
+            yield self.set_2
+        if self.set_3:
+            yield self.set_3
+
+    @property
+    def table_row(self) -> list:
+        return [
+            self.home_player.fetch(),
+            "w" if self.home_won else "",
+            self.away_player.fetch(),
+            "w" if not self.home_won else "",
+            *self.sets
+        ]
+
+    def __str__(self) -> str:
+        score_str = " | ".join(str(set) for set in self.sets)
+        match self.home_won:
+            case True:
+                return f"{self.home_player.fetch()} (w) vs. {self.away_player.fetch()} {score_str}"
+            case False:
+                return f"{self.home_player.fetch()} vs. {self.away_player.fetch()} (w) {score_str}"
+
+
+@INSTANCE.register
+class DoublesResult(umongo.EmbeddedDocument):
+    home_pair = fields.ReferenceField(DoublesPair, allow_none=True)
+    away_pair = fields.ReferenceField(DoublesPair, allow_none=True)
+    set_1 = fields.EmbeddedField(Set, allow_none=True)
+    set_2 = fields.EmbeddedField(Set, allow_none=True)
+    set_3 = fields.EmbeddedField(Set, allow_none=True)
+    home_won = fields.BoolField(required=True)
+
+    @property
+    def sets(self) -> Iterator[Set]:
+        if self.set_1:
+            yield self.set_1
+        if self.set_2:
+            yield self.set_2
+        if self.set_3:
+            yield self.set_3
+
+    @property
+    def table_row(self) -> list:
+        return [
+            self.home_pair.fetch(),
+            "w" if self.home_won else "",
+            self.away_pair.fetch(),
+            " " if self.home_won else "w",
+            *self.sets
+        ]
+
+    def __str__(self) -> str:
+        score_str = " ".join(str(set) for set in self.sets)
+        match self.home_won:
+            case True:
+                return f"{self.home_pair.fetch()} (w) vs. {self.away_pair.fetch()} {score_str}"
+            case False:
+                return f"{self.home_pair.fetch()} vs. {self.away_pair.fetch()} (w) {score_str}"
+
+
+@INSTANCE.register
+class MatchResult(umongo.Document):
+    match_date = fields.ReferenceField(MatchDate)
+    mens_singles_1 = fields.EmbeddedField(SinglesResult)
+    mens_singles_2 = fields.EmbeddedField(SinglesResult)
+    mens_singles_3 = fields.EmbeddedField(SinglesResult)
+    mens_doubles = fields.EmbeddedField(DoublesResult)
+    womens_singles = fields.EmbeddedField(SinglesResult)
+    womens_doubles = fields.EmbeddedField(DoublesResult)
+    mixed_doubles = fields.EmbeddedField(DoublesResult)
+    home_won: fields.BoolField(required=True)
+
+    @property
+    def events(self) -> Iterator[SinglesResult | DoublesResult]:
+        if self.mens_singles_1: yield self.mens_singles_1
+        if self.mens_singles_2: yield self.mens_singles_2
+        if self.mens_singles_3: yield self.mens_singles_3
+        if self.mens_doubles: yield self.mens_doubles
+        if self.womens_singles: yield self.womens_singles
+        if self.womens_doubles: yield self.womens_doubles
+        if self.mixed_doubles: yield self.mixed_doubles
+
+    def render(self) -> str:
+
+        results = tabulate.tabulate(
+            [
+                ["MS1", *self.mens_singles_1.table_row] ,
+                ["MS2", *self.mens_singles_2.table_row],
+                ["MS3", *self.mens_singles_3.table_row],
+                ["MD", *self.mens_doubles.table_row],
+                ["WS", *self.womens_singles.table_row],
+                ["WD", *self.womens_doubles.table_row],
+                ["XD", *self.mixed_doubles.table_row],
+            ]
+        )
+        return f"{self.match_date.fetch()}\n{textwrap.indent(results, prefix='  ')}"
 
 
 @INSTANCE.register

@@ -4,8 +4,9 @@ league_uuid = "997197CF-B35F-40FC-983A-0E8FD2D5DC8E"
 draws = [14, 61, 64, 66, 71]
 
 [crawling.cookies]
-lvt = "LHis604hoJdm5up8jgJ++2VsoLf9YSlDV9SKo86ZuAA="
-st = "l=2055&exp=45220.6520639931&c=1&cp=48"
+"ASP.NET_SessionId" = "h2wt4sdjld4au1luyhhopkm3"
+st = "l=2055&exp=45735.9747258333&c=1&cp=51"
+lvt = "LHis604hoJcmUJX5L/zG9nozJ7CyOaR29D2YcNgGpWQ="
 
 [display]
 club_name = "BC Zürich-Affoltern"

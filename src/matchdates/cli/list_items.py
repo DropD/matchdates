@@ -65,6 +65,8 @@ def matches(by_team: Optional[str], by_location: Optional[models.Location]):
         matches = list(models.MatchDate.find({
             "location": by_location
         }))
+    else:
+        matches = list(models.MatchDate.find({}))
     matches.sort(key=lambda m: m.date)
     click.echo(format.tabulate_match_dates(
         matches
