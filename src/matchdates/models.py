@@ -66,6 +66,9 @@ class Player(umongo.Document):
     def __str__(self) -> str:
         return self.name
 
+    def __hash__(self) -> int:
+        return hash((self.url, self.name))
+
 
 @INSTANCE.register
 class DoublesPair(umongo.Document):
@@ -74,6 +77,10 @@ class DoublesPair(umongo.Document):
 
     def __str__(self) -> str:
         return f"{self.first.fetch()} / {self.second.fetch()}"
+
+    @property
+    def players(self):
+        return [self.first.fetch(), self.second.fetch()]
 
 
 @INSTANCE.register
@@ -113,6 +120,12 @@ class SinglesResult(umongo.EmbeddedDocument):
             *self.sets
         ]
 
+    @property
+    def players(self) -> dict[str, list[str]]:
+        return {
+            "away": [self.away_player.fetch()] if self.away_player else [],
+            "home": [self.home_player.fetch()] if self.home_player else []}
+
     def __str__(self) -> str:
         score_str = " | ".join(str(set) for set in self.sets)
         match self.home_won:
@@ -150,6 +163,13 @@ class DoublesResult(umongo.EmbeddedDocument):
             *self.sets
         ]
 
+    @property
+    def players(self) -> dict[str, list[str]]:
+        return {
+            "away": self.away_pair.fetch().players if self.away_pair else [],
+            "home": self.home_pair.fetch().players if self.away_pair else []
+        }
+
     def __str__(self) -> str:
         score_str = " ".join(str(set) for set in self.sets)
         match self.home_won:
@@ -180,6 +200,16 @@ class MatchResult(umongo.Document):
         if self.womens_singles: yield self.womens_singles
         if self.womens_doubles: yield self.womens_doubles
         if self.mixed_doubles: yield self.mixed_doubles
+
+    @property
+    def event_items(self) -> Iterator[tuple[str, SinglesResult | DoublesResult]]:
+        if self.mens_singles_1: yield (("mens_singles", 1), self.mens_singles_1)
+        if self.mens_singles_2: yield (("mens_singles", 2), self.mens_singles_2)
+        if self.mens_singles_3: yield (("mens_singles", 3), self.mens_singles_3)
+        if self.mens_doubles: yield (("mens_doubles", None), self.mens_doubles)
+        if self.womens_singles: yield (("womens_singles", None), self.womens_singles)
+        if self.womens_doubles: yield (("womens_doubles", None), self.womens_doubles)
+        if self.mixed_doubles: yield (("mixed_doubles", None), self.mixed_doubles)
 
     def render(self) -> str:
 

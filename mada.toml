@@ -1,7 +1,9 @@
 [crawling]
 domain = "swiss-badminton.ch"
-league_uuid = "997197CF-B35F-40FC-983A-0E8FD2D5DC8E"
-draws = [14, 61, 64, 66, 71]
+league_uuid = "4D2A187C-0855-4B4F-B106-6B6413FC17BF"
+draws = [14, 62, 63, 64, 67, 68, 69]
+datadir = "~/Documents/mada"
+data_min_age = 10 # minutes
 
 [crawling.cookies]
 "ASP.NET_SessionId" = "h2wt4sdjld4au1luyhhopkm3"
@@ -12,4 +14,4 @@ lvt = "LHis604hoJcmUJX5L/zG9nozJ7CyOaR29D2YcNgGpWQ="
 club_name = "BC Zürich-Affoltern"
 
 [database]
-mongodb = "mongodb://127.0.0.1:27017"
+mongodb = "mongodb://mada-mongo.orb.local:27017"

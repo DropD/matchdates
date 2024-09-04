@@ -14,15 +14,19 @@ def scan():
     teams |= set(m.away_team for m in models.MatchDate.find({}))
 
     for team in teams:
-        for clash_result in queries.match_same_day_for_team(team_name=team):
-            click.echo(f"Multiple matches for team {team} on the {clash_result.day}:")
-            click.echo(
-                textwrap.indent(
-                    click.style(
-                        format.tabulate_match_dates(clash_result.matches),
-                        fg=styling._color_for_severity(clash_result.severity)
-                    ),
-                    constants.INDENT
+        for clash_result in sorted(
+            queries.match_same_day_for_team(team_name=team), key=lambda clash: clash.day
+        ):
+            if not all(match.date.strftime("%H:%M") == "00:00" for match in clash_result.matches):
+                click.echo(
+                    f"Multiple matches for team {team} on the {clash_result.day}:")
+                click.echo(
+                    textwrap.indent(
+                        click.style(
+                            format.tabulate_match_dates(clash_result.matches),
+                            fg=styling._color_for_severity(
+                                clash_result.severity)
+                        ),
+                        constants.INDENT
+                    )
                 )
-            )
-

@@ -35,7 +35,7 @@ class Month:
         cal = [[""] * 7 for i in range(self.last.week_of_month)]
         for day in range(1, self.last.day):
             date = pendulum.date(self.year, self.month, day)
-            
+
             lines = [click.style(
                 f"{day:<24}",
                 **(self.today_style if date == pendulum.Date.today() else self.normal_style)
@@ -51,9 +51,10 @@ class Month:
 @main.command("calendar")
 @click.argument("month", type=int, default=pendulum.now().month)
 @click.option("--rules", type=str, default="all")
-def calendar(month, rules):
+@click.option("--year", type=int, default=pendulum.now().year)
+def calendar(month, rules, year):
     """Display calendar view of matches."""
-    cal = Month(first=pendulum.now().replace(month=month, day=1))
+    cal = Month(first=pendulum.now().replace(month=month, year=year, day=1))
     matches = list(
         models.MatchDate.find(
             queries.match_filter_from_to_day(
@@ -68,16 +69,19 @@ def calendar(month, rules):
         if rules == "all":
             if (
                 pendulum.WeekDay(match.date.weekday()) == pendulum.WEDNESDAY and
-                match.home_team.startswith("BC Zürich-Affoltern")
+                match.home_team.startswith(
+                    "BC Zürich-Affoltern") and not match.home_team.endswith("S")
             ):
                 postfix = needsfix
             elif (
-                match.date.month == 4
+                match.date.month == 4 and match.date.day > 17
             ):
                 postfix = needsfix
-        cal.add_to_date(match.date, format.short_form_match(match) + " " + postfix)
+        cal.add_to_date(match.date, format.short_form_match(
+            match) + " " + postfix)
 
-    click.echo(click.style(cal.first.format("MMMM"), fg="green", bold=True, underline=True))
+    click.echo(click.style(cal.first.format("MMMM"),
+               fg="green", bold=True, underline=True))
     click.echo(
         tabulate.tabulate(
             cal.render(),

@@ -91,20 +91,19 @@ class MatchClashResult:
 
     @classmethod
     def from_query_item(
-            cls: type[Self],
-            *,
-            team_name: str,
-            _id: str,
-            count: int,
-            matches: list[str]
-        ) -> Self:
+        cls: type[Self],
+        *,
+        team_name: str,
+        _id: str,
+        count: int,
+        matches: list[str]
+    ) -> Self:
         assert count > 1, "Trying to build a MatchClashResult from not a clash"
         return cls(
             day=pendulum.Date.fromisoformat(_id),
             team_name=team_name,
             matches=list(models.MatchDate.find({"url": {"$in": matches}}))
         )
-
 
 
 def match_same_day_for_team(team_name: str) -> Iterator[MatchClashResult]:

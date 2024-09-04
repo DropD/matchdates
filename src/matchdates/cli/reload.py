@@ -8,7 +8,41 @@ from scrapy import crawler
 
 from .main import main
 from . import constants
-from .. import datespider, models
+from .. import datespider, models, settings
+
+
+def recrawl() -> None:
+    click.echo("recrawling data")
+    new_datafile = settings.get_crawl_datadir(
+        settings.SETTINGS) / f"matchdates-{pendulum.now().int_timestamp}.json"
+
+    process = crawler.CrawlerProcess(
+        settings={
+            "FEEDS": {
+                str(new_datafile): {"format": "json"}
+            }
+        }
+    )
+    process.crawl(datespider.MatchDateSpider)
+    process.start()
+    return new_datafile
+
+
+def latest_datafile(datafiles: list[pathlib.Path]) -> pathlib.Path:
+    if not datafiles:
+        return None
+    return sorted(datafiles, key=lambda p: p.stem.split("-")[1])[-1]
+
+
+def datafiles_outdated(datafiles: list[pathlib.Path]) -> bool:
+    if not datafiles:
+        return True
+    else:
+        current_datafile = latest_datafile(datafiles)
+        latest_date = pendulum.from_timestamp(
+            int(current_datafile.stem.split("-")[1]))
+        click.echo(f"latest data from {latest_date}")
+        return (pendulum.now() - latest_date).total_minutes() >= settings.SETTINGS["crawling"]["data_min_age"]
 
 
 @main.command("reload")
@@ -16,31 +50,19 @@ from .. import datespider, models
 def reload(allow_rescrape: bool) -> None:
     """Grab the dates from online and update the db."""
 
+    datadir = settings.get_crawl_datadir(settings.SETTINGS)
     datafiles = [
-        i for i in pathlib.Path().iterdir() if i.stem.startswith("matchdates")
+        i for i in datadir.iterdir() if i.stem.startswith("matchdates")
     ]
-    datafiles.sort(key=lambda p: p.stem.split("-")[1])
-    latest_date = pendulum.from_timestamp(int(datafiles[-1].stem.split("-")[1]))
-    current_dates = datafiles[-1]
-    click.echo(f"latest data from {latest_date}")
-    if (pendulum.now() - latest_date).total_minutes() >= 10 and allow_rescrape:
-        click.echo("recrawling data")
-        current_dates = pathlib.Path(f"matchdates-{pendulum.now().int_timestamp}.json")
+    current_datafile = latest_datafile(datafiles)
 
-        process = crawler.CrawlerProcess(
-            settings={
-                "FEEDS": {
-                    str(current_dates): {"format": "json"}
-                }
-            }
-        )
-        process.crawl(datespider.MatchDateSpider)
-        process.start()
+    if datafiles_outdated(datafiles) and allow_rescrape:
+        current_datafile = recrawl()
     else:
         click.echo("using existing data.")
 
     click.echo("loading crawled data")
-    data = json.loads(current_dates.read_text())
+    data = json.loads(current_datafile.read_text())
 
     click.echo("updating database")
 
@@ -49,10 +71,13 @@ def reload(allow_rescrape: bool) -> None:
         location_result = models.load_location_from_upstream(**loc_data)
         match location_result.status:
             case models.DocumentFromDataStatus.CHANGED:
-                click.echo(f"Location address change: {location_result.location.name}")
-                click.echo(textwrap.indent("\n".join(location_result.diff), constants.INDENT))
+                click.echo(
+                    f"Location address change: {location_result.location.name}")
+                click.echo(textwrap.indent(
+                    "\n".join(location_result.diff), constants.INDENT))
             case models.DocumentFromDataStatus.NEW:
-                click.echo(f"New Location found: {location_result.location.name}")
+                click.echo(
+                    f"New Location found: {location_result.location.name}")
             case _:
                 ...
 

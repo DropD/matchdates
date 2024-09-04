@@ -7,7 +7,8 @@ from .list_items import list_items
 from .show import show
 from .move import move
 from .results import results
+from .graph import graph
 from . import calendar
 
 
-__all__ = ["main", "reload", "scan", "on_date", "upcoming", "list_items", "show", "calendar", "move", "results"]
+__all__ = ["main", "reload", "scan", "on_date", "upcoming", "list_items", "show", "calendar", "move", "results", "graph"]
