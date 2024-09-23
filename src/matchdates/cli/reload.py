@@ -1,4 +1,5 @@
 import json
+import logging
 import pathlib
 
 import click
@@ -13,6 +14,8 @@ from .. import datespider, models, settings
 
 def recrawl() -> None:
     click.echo("recrawling data")
+    logging.getLogger("scrapy.core.scraper").setLevel(logging.WARN)
+    logging.getLogger("scrapy.core.engine").setLevel(logging.INFO)
     new_datafile = settings.get_crawl_datadir(
         settings.SETTINGS) / f"matchdates-{pendulum.now().int_timestamp}.json"
 

@@ -16,3 +16,17 @@ def fromiso(datestring: str, timezone: str | pendulum.Timezone) -> pendulum.Date
 
 def iso_to_std_datetime(datestring: str) -> datetime.datetime:
     return datetime.datetime.fromisoformat(datestring)
+
+
+def season_start(date: pendulum.Date) -> pendulum.Date:
+    if date.month >= 9:
+        return date.first_of(unit="year") + pendulum.Duration(months=8)
+    else:
+        return date.first_of(unit="year") - pendulum.Duration(months=4)
+
+
+def season_end(date: pendulum.Date) -> pendulum.Date:
+    if date.month >= 9:
+        return date.last_of(unit="year") + pendulum.Duration(months=4)
+    else:
+        return date.first_of(unit="year").last_of(unit="month") + pendulum.Duration(months=3)

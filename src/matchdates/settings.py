@@ -32,3 +32,4 @@ SETTINGS = toml.load(get_settings_file())
 BOT_NAME = "mada"
 SPIDER_MODULES = ["matchdates.datespider", "matchdates.marespider"]
 HTTPCACHE_ENABLED = True
+LOG_LEVEL = "INFO"

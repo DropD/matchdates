@@ -16,6 +16,7 @@ def results() -> None:
     """Work with match results."""
     ...
 
+
 def make_player(player_dict: Optional[dict[str, str]]) -> Optional[models.Player]:
     if player_dict:
         player = models.Player(**player_dict)
@@ -43,9 +44,12 @@ def make_singles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
     home_player = make_player(singles_match["home_player"])
     away_player = make_player(singles_match["away_player"])
     s1, s2, s3 = singles_match["set_1"], singles_match["set_2"], singles_match["set_3"]
-    if s1: s1.pop("retired")
-    if s2: s2.pop("retired")
-    if s3: s3.pop("retired")
+    if s1:
+        s1.pop("retired")
+    if s2:
+        s2.pop("retired")
+    if s3:
+        s3.pop("retired")
     return models.SinglesResult(
         home_player=home_player,
         away_player=away_player,
@@ -67,9 +71,12 @@ def make_doubles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
         home_pair = make_pair(home_player1, home_player2)
         away_pair = make_pair(away_player1, away_player2)
     s1, s2, s3 = singles_match["set_1"], singles_match["set_2"], singles_match["set_3"]
-    if s1: s1.pop("retired")
-    if s2: s2.pop("retired")
-    if s3: s3.pop("retired")
+    if s1:
+        s1.pop("retired")
+    if s2:
+        s2.pop("retired")
+    if s3:
+        s3.pop("retired")
     return models.DoublesResult(
         home_pair=home_pair,
         away_pair=away_pair,
@@ -86,9 +93,13 @@ def make_doubles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
 @click.pass_context
 def load(ctx: click.Context, matches: list[models.MatchDate], allow_rescrape: bool) -> None:
     if not matches:
-        matches = list(models.MatchDate.find({"date": {"$lt": date_utils.date_to_datetime(pendulum.today())}}))
+        today = pendulum.today()
+        last_season_start = date_utils.season_start(today)
+        matches = list(models.MatchDate.find(
+            {"date": {"$lt": date_utils.date_to_datetime(today), "$gt": last_season_start}}))
     known_results = models.MatchResult.find({})
-    known_matchnrs = set(r.match_date.fetch().url.rsplit("/", 1)[1] for r in known_results)
+    known_matchnrs = set(r.match_date.fetch().url.rsplit(
+        "/", 1)[1] for r in known_results)
     requested_matchnrs = set(m.matchnr for m in matches)
     matchnrs = requested_matchnrs
     if not allow_rescrape:

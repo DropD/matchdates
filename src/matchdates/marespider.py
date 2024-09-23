@@ -42,7 +42,7 @@ class Set:
     #         raise ValueError(f"{self.home_points} : {self.away_points} is not a valid score!")
     #     elif winning_score < 21 and not self.retired:
     #         raise ValueError(f"{self.home_points} : {self.away_points} is not a valid score if neither player retired.")
-    
+
     @property
     def winner(self) -> Side:
         match self.retired:
@@ -95,7 +95,7 @@ class DoublesResult:
     set_1: Set
     set_2: Optional[Set]
     set_3: Optional[Set]
-    winner: Side 
+    winner: Side
 
 
 @dataclasses.dataclass
@@ -109,6 +109,7 @@ class TeamMatchResult:
     mixed_doubles: DoublesResult
     winner: Side
     url: str
+    mixed_doubles_2: Optional[DoublesResult] = None
 
 
 class MatchResultSpider(scrapy.Spider):
@@ -122,9 +123,12 @@ class MatchResultSpider(scrapy.Spider):
         "HE2": "mens_singles_2",
         "HE3": "mens_singles_3",
         "HD1": "mens_doubles",
+        "Men's Doubles1": "mens_doubles",
         "DE1": "womens_singles",
         "DD1": "womens_doubles",
-        "GD1": "mixed_doubles"
+        "Women's Doubles1": "womens_doubles",
+        "GD1": "mixed_doubles",
+        "GD2": "mixed_doubles_2"
     }
 
     def __init__(self, matchnrs: Optional[list[int]] = None):
@@ -138,25 +142,27 @@ class MatchResultSpider(scrapy.Spider):
             yield scrapy.http.Request(url, cookies=self.cookies, callback=self.parse_matchdetail)
 
     def parse_matchdetail(
-            self,
-            response: scrapy.http.Response,
-        ) -> Iterator[TeamMatchResult]:
+        self,
+        response: scrapy.http.Response,
+    ) -> Iterator[TeamMatchResult]:
         events = response.css(".match-group__item")
 
-        event_results = {self.event_name(event): self.event_details(event) for event in events}
+        event_results = {self.event_name(
+            event): self.event_details(event) for event in events}
         results = {
-            k: self.details_to_singles_res(v) for k, v in event_results.items() 
+            k: self.details_to_singles_res(v) for k, v in event_results.items()
             if re.match(r".*singles.*", k)
         } | {
-                k: self.details_to_doubles_res(v) for k, v in event_results.items() 
-                if re.match(r".*doubles.*", k)
-            }
+            k: self.details_to_doubles_res(v) for k, v in event_results.items()
+            if re.match(r".*doubles.*", k)
+        }
 
         wins = collections.Counter(r.winner for r in results.values())
         return TeamMatchResult(
             **results,
             winner=max(wins, key=lambda s: wins[s]),
-            url=response.url.replace(f"https://www.{self.allowed_domains[0]}", "")
+            url=response.url.replace(
+                f"https://www.{self.allowed_domains[0]}", "")
         )
 
     def details_to_singles_res(self, details: dict[str, list[Player] | list[Set]]) -> SinglesResult:
@@ -165,9 +171,9 @@ class MatchResultSpider(scrapy.Spider):
             score[f"set_{i + 1}"] = set_result
 
         return SinglesResult(
-            home_player = details["home_players"][0] if details["home_players"] else None,
-            away_player = details["away_players"][0] if details["away_players"] else None,
-            winner = details["winner"],
+            home_player=details["home_players"][0] if details["home_players"] else None,
+            away_player=details["away_players"][0] if details["away_players"] else None,
+            winner=details["winner"],
             **score
         )
 
@@ -177,15 +183,15 @@ class MatchResultSpider(scrapy.Spider):
             score[f"set_{i + 1}"] = set_result
 
         return DoublesResult(
-            home_pair = DoublesPair(
-                first = details["home_players"][0],
-                second = details["home_players"][1],
+            home_pair=DoublesPair(
+                first=details["home_players"][0],
+                second=details["home_players"][1],
             ) if details["home_players"] else None,
-            away_pair = DoublesPair(
-                first = details["away_players"][0],
-                second = details["away_players"][1],
+            away_pair=DoublesPair(
+                first=details["away_players"][0],
+                second=details["away_players"][1],
             ) if details["away_players"] else None,
-            winner = details["winner"],
+            winner=details["winner"],
             **score
         )
 
@@ -193,8 +199,10 @@ class MatchResultSpider(scrapy.Spider):
         data = event.css(".match__body")
         rows = data.css(".match__row")
         assert len(rows) == 2
-        home_players = list(self.match_players(rows[0].css(".match__row-title-value-content")))
-        away_players = list(self.match_players(rows[1].css(".match__row-title-value-content")))
+        home_players = list(self.match_players(
+            rows[0].css(".match__row-title-value-content")))
+        away_players = list(self.match_players(
+            rows[1].css(".match__row-title-value-content")))
         sets = list(self.match_sets(event.css(".match__result > .points")))
 
         winner = None

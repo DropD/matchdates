@@ -106,8 +106,10 @@ class MatchClashResult:
         )
 
 
-def match_same_day_for_team(team_name: str) -> Iterator[MatchClashResult]:
+def match_same_day_for_team(team_name: str, date=pendulum.Date) -> Iterator[MatchClashResult]:
     query = models.MatchDate.collection.aggregate([
+        {"$match": match_filter_from_to_day(
+            start=date_utils.season_start(date), end=date_utils.season_end(date))},
         {"$match": match_filter_by_team(team_name)},
         match_group_by_match_day(),
         {"$match": {"count": {"$gt": 1}}}

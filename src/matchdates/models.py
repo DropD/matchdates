@@ -1,6 +1,7 @@
 import dataclasses
 import difflib
 import enum
+import logging
 import textwrap
 from typing import Optional, Iterator
 
@@ -21,6 +22,8 @@ SETTINGS = settings.SETTINGS["database"]
 
 def get_db() -> pymongo.database.Database:
     client = pymongo.MongoClient(SETTINGS["mongodb"])
+    logging.getLogger("pymongo.command").setLevel(logging.WARN)
+    logging.getLogger("pymongo.serverSelection").setLevel(logging.WARN)
     return client.matchdates
 
 
@@ -193,29 +196,43 @@ class MatchResult(umongo.Document):
 
     @property
     def events(self) -> Iterator[SinglesResult | DoublesResult]:
-        if self.mens_singles_1: yield self.mens_singles_1
-        if self.mens_singles_2: yield self.mens_singles_2
-        if self.mens_singles_3: yield self.mens_singles_3
-        if self.mens_doubles: yield self.mens_doubles
-        if self.womens_singles: yield self.womens_singles
-        if self.womens_doubles: yield self.womens_doubles
-        if self.mixed_doubles: yield self.mixed_doubles
+        if self.mens_singles_1:
+            yield self.mens_singles_1
+        if self.mens_singles_2:
+            yield self.mens_singles_2
+        if self.mens_singles_3:
+            yield self.mens_singles_3
+        if self.mens_doubles:
+            yield self.mens_doubles
+        if self.womens_singles:
+            yield self.womens_singles
+        if self.womens_doubles:
+            yield self.womens_doubles
+        if self.mixed_doubles:
+            yield self.mixed_doubles
 
     @property
     def event_items(self) -> Iterator[tuple[str, SinglesResult | DoublesResult]]:
-        if self.mens_singles_1: yield (("mens_singles", 1), self.mens_singles_1)
-        if self.mens_singles_2: yield (("mens_singles", 2), self.mens_singles_2)
-        if self.mens_singles_3: yield (("mens_singles", 3), self.mens_singles_3)
-        if self.mens_doubles: yield (("mens_doubles", None), self.mens_doubles)
-        if self.womens_singles: yield (("womens_singles", None), self.womens_singles)
-        if self.womens_doubles: yield (("womens_doubles", None), self.womens_doubles)
-        if self.mixed_doubles: yield (("mixed_doubles", None), self.mixed_doubles)
+        if self.mens_singles_1:
+            yield (("mens_singles", 1), self.mens_singles_1)
+        if self.mens_singles_2:
+            yield (("mens_singles", 2), self.mens_singles_2)
+        if self.mens_singles_3:
+            yield (("mens_singles", 3), self.mens_singles_3)
+        if self.mens_doubles:
+            yield (("mens_doubles", None), self.mens_doubles)
+        if self.womens_singles:
+            yield (("womens_singles", None), self.womens_singles)
+        if self.womens_doubles:
+            yield (("womens_doubles", None), self.womens_doubles)
+        if self.mixed_doubles:
+            yield (("mixed_doubles", None), self.mixed_doubles)
 
     def render(self) -> str:
 
         results = tabulate.tabulate(
             [
-                ["MS1", *self.mens_singles_1.table_row] ,
+                ["MS1", *self.mens_singles_1.table_row],
                 ["MS2", *self.mens_singles_2.table_row],
                 ["MS3", *self.mens_singles_3.table_row],
                 ["MD", *self.mens_doubles.table_row],
@@ -242,7 +259,8 @@ class HistoricMatchDate(umongo.Document):
         if self_date != match_date:
             changeset.append(f"{self_date} -> {match_date}")
         if self.location != match.location:
-            changeset.append(f"{self.location.fetch()} -> {match.location.fetch()}")
+            changeset.append(
+                f"{self.location.fetch()} -> {match.location.fetch()}")
         changes = " ".join(changeset)
         return f"CHANGED: {match.home_team} vs {match.away_team}: {changes}"
 
@@ -251,7 +269,7 @@ class DocumentFromDataStatus(enum.Enum):
     NEW = "document was not yet present in database"
     CHANGED = "document already in database but updated"
     UNCHANGED = "document already in database and unchanged"
-    
+
 
 class MatchDateChangeReason(enum.Enum):
     DATE = "the date or time was changed"
@@ -307,14 +325,15 @@ def load_location_from_upstream(name: str, address: str) -> LocationFromDataResu
             diff=[],
         )
 
+
 def load_match_date_from_upstream(
-        *,
-        url: str,
-        date: str,
-        home_team: str,
-        away_team: str,
-        location: Location,
-    ) -> MatchDateFromDataResult:
+    *,
+    url: str,
+    date: str,
+    home_team: str,
+    away_team: str,
+    location: Location,
+) -> MatchDateFromDataResult:
     """Find existing match date (update if necessary) or add a new one from upstream."""
     existing = MatchDate.find_one({"url": url})
     date = date_utils.iso_to_std_datetime(date)
