@@ -23,7 +23,8 @@ def recrawl() -> None:
         settings={
             "FEEDS": {
                 str(new_datafile): {"format": "json"}
-            }
+            },
+            "LOG_LEVEL": "INFO"
         }
     )
     process.crawl(datespider.MatchDateSpider)

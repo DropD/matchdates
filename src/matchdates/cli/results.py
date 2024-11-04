@@ -113,7 +113,8 @@ def load(ctx: click.Context, matches: list[models.MatchDate], allow_rescrape: bo
             settings={
                 "FEEDS": {
                     results_file.name: {"format": "json"}
-                }
+                },
+                "LOG_LEVEL": "INFO",
             }
         )
         process.crawl(marespider.MatchResultSpider, matchnrs=matchnrs)
