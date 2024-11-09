@@ -11,6 +11,6 @@ class Team(click.Choice):
 
     @property
     def choices(self):
-        return models.MatchDate.collection.aggregate([
-                queries.match_list_field_values("home_team")
-            ]).next()["teams"]
+        return models.MatchDate.collection.aggregate(
+            [queries.match_list_field_values("home_team")]
+        ).next()["teams"]

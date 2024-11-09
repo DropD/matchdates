@@ -9,4 +9,3 @@ def _color_for_severity(severity: queries.MatchClashSeverity) -> str:
             return "green"
         case _:
             return "yellow"
-

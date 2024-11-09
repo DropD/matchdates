@@ -24,7 +24,8 @@ class Club(base.IDMixin, base.Base):
     __tablename__ = "club"
     name: Mapped[str] = sqla.orm.mapped_column(unique=True)
     teams: Mapped[list[Team]] = sqla.orm.relationship(
-        back_populates="club", default_factory=list, repr=False)
+        back_populates="club", default_factory=list, repr=False
+    )
 
     season_assocs: Mapped[list[ClubSeasonAssociation]] = sqla.orm.relationship(
         back_populates="club", cascade="all, delete-orphan", init=False, repr=False
@@ -34,7 +35,7 @@ class Club(base.IDMixin, base.Base):
         "season",
         creator=lambda season_obj: ClubSeasonAssociation(season=season_obj),
         default_factory=list,
-        repr=False
+        repr=False,
     )
 
 
@@ -43,16 +44,14 @@ class ClubSeasonAssociation(base.Base):
     club_id: Mapped[int] = sqla.orm.mapped_column(
         sqla.ForeignKey("club.id"), primary_key=True, init=False
     )
-    club: Mapped[Club] = sqla.orm.relationship(
-        back_populates="season_assocs", default=None
-    )
+    club: Mapped[Club] = sqla.orm.relationship(back_populates="season_assocs", default=None)
 
     season_id: Mapped[int] = sqla.orm.mapped_column(
         sqla.ForeignKey("season.id"), primary_key=True, init=False
     )
-    season: Mapped[Season] = sqla.orm.relationship(
-        back_populates="club_assocs", default=None
-    )
+    season: Mapped[Season] = sqla.orm.relationship(back_populates="club_assocs", default=None)
+
+
 #     season_entries: Mapped[list["SeasonClub"]] = sqla.orm.relationship(
 #         back_populates="club"
 #     )

@@ -2,13 +2,11 @@ import dataclasses
 import enum
 import itertools
 from typing import Any, Iterator
-from typing_extensions import Self
 
 import pendulum
 import sqlalchemy as sqla
 
 from . import date_utils
-from . import models
 from . import orm
 
 
@@ -26,11 +24,12 @@ def match_group_by_match_day() -> dict[str, dict[str, Any]]:
         "$group": {
             "_id": {
                 "$dateToString": {
-                    "format": "%Y-%m-%d", "date": "$date",
+                    "format": "%Y-%m-%d",
+                    "date": "$date",
                 },
             },
             "count": {"$sum": 1},
-            "matches": {"$addToSet": "$url"}
+            "matches": {"$addToSet": "$url"},
         }
     }
 
@@ -38,26 +37,18 @@ def match_group_by_match_day() -> dict[str, dict[str, Any]]:
 def match_filter_around_day(day: pendulum.Date, plusminus: int = 0) -> dict[str, Any]:
     return match_filter_from_to_day(
         start=day - pendulum.duration(days=plusminus),
-        end=day + pendulum.duration(days=plusminus + 1)
+        end=day + pendulum.duration(days=plusminus + 1),
     )
 
 
 def match_filter_from_to_day(start: pendulum.Date, end: pendulum.Date) -> dict[str, Any]:
     return {
-        "date": {
-            "$gt": date_utils.date_to_datetime(start),
-            "$lt": date_utils.date_to_datetime(end)
-        }
+        "date": {"$gt": date_utils.date_to_datetime(start), "$lt": date_utils.date_to_datetime(end)}
     }
 
 
 def match_list_field_values(field_name: str) -> dict[str, Any]:
-    return {
-        "$group": {
-            "_id": None,
-            "teams": {"$addToSet": f"${field_name}"}
-        }
-    }
+    return {"$group": {"_id": None, "teams": {"$addToSet": f"${field_name}"}}}
 
 
 class MatchClashSeverity(enum.IntEnum):
@@ -75,8 +66,7 @@ class MatchClashResult:
     @property
     def severity(self):
         combinations = itertools.combinations(
-            [pendulum.instance(m.date_time) for m in self.matches],
-            2
+            [pendulum.instance(m.date_time) for m in self.matches], 2
         )
         time_between = [abs(c[0] - c[1]).total_hours() for c in combinations]
         # not enough time in between matches
@@ -98,17 +88,16 @@ def sqla_match_clashes(team: orm.Team, date=pendulum.Date) -> Iterator[MatchClas
             session.execute(
                 sqla.select(
                     sqla.func.strftime("%Y-%m-%d", orm.MatchDate.date_time),
-                    sqla.func.aggregate_strings(orm.MatchDate.id, ", ")
-                ).filter(
-                    (
-                        (orm.MatchDate.home_team == team)
-                        | (orm.MatchDate.away_team == team)
-                    )
+                    sqla.func.aggregate_strings(orm.MatchDate.id, ", "),
+                )
+                .filter(
+                    ((orm.MatchDate.home_team == team) |
+                     (orm.MatchDate.away_team == team))
                     & (orm.MatchDate.date_time > date_utils.season_start(date).naive())
                     & (orm.MatchDate.date_time <= date_utils.season_end(date).naive())
-                ).group_by(
-                    sqla.func.strftime("%Y-%m-%d", orm.MatchDate.date_time)
-                ).having(sqla.func.count() > 1)
+                )
+                .group_by(sqla.func.strftime("%Y-%m-%d", orm.MatchDate.date_time))
+                .having(sqla.func.count() > 1)
             )
         )
         for date_str, match_ids in groups:
@@ -116,5 +105,5 @@ def sqla_match_clashes(team: orm.Team, date=pendulum.Date) -> Iterator[MatchClas
                 day=pendulum.from_format(date_str, "YYYY-MM-DD"),
                 team_name=team.name,
                 matches=[session.get(orm.MatchDate, int(id))
-                         for id in match_ids.split(", ")]
+                         for id in match_ids.split(", ")],
             )

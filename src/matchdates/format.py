@@ -44,8 +44,7 @@ def tabulate_match_dates(matches: list[models.MatchDate]) -> str:
     """
     Format a table for CLI output from a list of match dates.
     """
-    headers = ["Weekday", "Date", "Time",
-               "Home Team", "Away Team", "Nr", "Location"]
+    headers = ["Weekday", "Date", "Time", "Home Team", "Away Team", "Nr", "Location"]
     return tabulate.tabulate(
         [
             (
@@ -55,10 +54,11 @@ def tabulate_match_dates(matches: list[models.MatchDate]) -> str:
                 color_team(m.home_team.name),
                 color_team(m.away_team.name),
                 m.url.rsplit("/", 1)[-1],
-                m.location.name
-            ) for m in matches
+                m.location.name,
+            )
+            for m in matches
         ],
-        headers=headers
+        headers=headers,
     )
 
 

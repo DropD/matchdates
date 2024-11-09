@@ -25,26 +25,16 @@ class PlayedMatch(umongo.Document):
 
     @property
     def event_attribute_name(self) -> str:
-        return self.event + (
-            f"_{self.number}" if self.number is not None else ""
-        )
+        return self.event + (f"_{self.number}" if self.number is not None else "")
 
     @property
     def is_home_player(self) -> bool:
-        return (
-            self.team.fetch().name
-            == self.end.fetch().match_date.fetch().home_team()
-        )
+        return self.team.fetch().name == self.end.fetch().match_date.fetch().home_team()
 
     @property
     def won(self):
-        home_won = getattr(
-            self.end.fetch(), self.event_attribute_name
-        ).fetch().home_won
-        return (
-            (home_won and self.is_home_player) or
-            (not home_won and not self.is_home_player)
-        )
+        home_won = getattr(self.end.fetch(), self.event_attribute_name).fetch().home_won
+        return (home_won and self.is_home_player) or (not home_won and not self.is_home_player)
 
 
 def update_results() -> None:
@@ -70,39 +60,31 @@ def update_result_subgraph(result: models.MatchResult) -> None:
             home_team.commit()
         for player in event.players["away"]:
             unique_players.add((player.name, away_team.name))
-            if not PlayedMatch.find_one({
-                "start": player,
-                "end": result,
-                "event": event_name[0],
-                "number": event_name[1]
-            }):
+            if not PlayedMatch.find_one(
+                {"start": player, "end": result, "event": event_name[0], "number": event_name[1]}
+            ):
                 PlayedMatch(
                     start=player,
                     end=result,
                     team=away_team,
                     event=event_name[0],
-                    number=event_name[1]
+                    number=event_name[1],
                 ).commit()
         for player in event.players["home"]:
             unique_players.add((player.name, home_team.name))
-            if not PlayedMatch.find_one({
-                "start": player,
-                "end": result,
-                "event": event_name[0],
-                "number": event_name[1]
-            }):
+            if not PlayedMatch.find_one(
+                {"start": player, "end": result, "event": event_name[0], "number": event_name[1]}
+            ):
                 PlayedMatch(
                     start=player,
                     end=result,
                     team=home_team,
                     event=event_name[0],
-                    number=event_name[1]
+                    number=event_name[1],
                 ).commit()
     for player_name, team_name in unique_players:
         player = models.Player.find_one({"name": player_name})
         if not PlayedMatch.find_one({"start": player, "end": result}):
             PlayedTeamMatch(
-                start=player,
-                end=result,
-                team=Team.find_one({"name": team_name})
+                start=player, end=result, team=Team.find_one({"name": team_name})
             ).commit()

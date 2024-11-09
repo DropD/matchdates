@@ -10,7 +10,6 @@ import pymongo
 import umongo
 import umongo.frameworks
 import tabulate
-from typing_extensions import Self
 from umongo import fields, validate
 
 from . import date_utils
@@ -120,14 +119,15 @@ class SinglesResult(umongo.EmbeddedDocument):
             "w" if self.home_won else "",
             self.away_player.fetch(),
             "w" if not self.home_won else "",
-            *self.sets
+            *self.sets,
         ]
 
     @property
     def players(self) -> dict[str, list[str]]:
         return {
             "away": [self.away_player.fetch()] if self.away_player else [],
-            "home": [self.home_player.fetch()] if self.home_player else []}
+            "home": [self.home_player.fetch()] if self.home_player else [],
+        }
 
     def __str__(self) -> str:
         score_str = " | ".join(str(set) for set in self.sets)
@@ -163,14 +163,14 @@ class DoublesResult(umongo.EmbeddedDocument):
             "w" if self.home_won else "",
             self.away_pair.fetch(),
             " " if self.home_won else "w",
-            *self.sets
+            *self.sets,
         ]
 
     @property
     def players(self) -> dict[str, list[str]]:
         return {
             "away": self.away_pair.fetch().players if self.away_pair else [],
-            "home": self.home_pair.fetch().players if self.away_pair else []
+            "home": self.home_pair.fetch().players if self.away_pair else [],
         }
 
     def __str__(self) -> str:
@@ -229,7 +229,6 @@ class MatchResult(umongo.Document):
             yield (("mixed_doubles", None), self.mixed_doubles)
 
     def render(self) -> str:
-
         results = tabulate.tabulate(
             [
                 ["MS1", *self.mens_singles_1.table_row],
@@ -259,8 +258,7 @@ class HistoricMatchDate(umongo.Document):
         if self_date != match_date:
             changeset.append(f"{self_date} -> {match_date}")
         if self.location != match.location:
-            changeset.append(
-                f"{self.location.fetch()} -> {match.location.fetch()}")
+            changeset.append(f"{self.location.fetch()} -> {match.location.fetch()}")
         changes = " ".join(changeset)
         return f"CHANGED: {match.home_team} vs {match.away_team}: {changes}"
 
@@ -298,10 +296,7 @@ def load_location_from_upstream(name: str, address: str) -> LocationFromDataResu
         address_changed = existing.address != address
         if address_changed:
             diff = difflib.unified_diff(
-                existing.address.splitlines(),
-                address.splitlines(),
-                fromfile="old",
-                tofile="new"
+                existing.address.splitlines(), address.splitlines(), fromfile="old", tofile="new"
             )
             existing.update({"address": address})
             existing.commit()
@@ -349,14 +344,9 @@ def load_match_date_from_upstream(
                 date=existing.date,
                 location=existing.location,
                 match=existing,
-                archivation_date=pendulum.now()
+                archivation_date=pendulum.now(),
             )
-            existing.update(
-                {
-                    "date": date,
-                    "location": location
-                }
-            )
+            existing.update({"date": date, "location": location})
             archived.commit()
             existing.commit()
             return MatchDateFromDataResult(
@@ -373,15 +363,9 @@ def load_match_date_from_upstream(
             )
     else:
         new = MatchDate(
-            url=url,
-            date=date,
-            home_team=home_team,
-            away_team=away_team,
-            location=location
+            url=url, date=date, home_team=home_team, away_team=away_team, location=location
         )
         new.commit()
         return MatchDateFromDataResult(
-            match_date=new,
-            status=DocumentFromDataStatus.NEW,
-            change_reasons=[]
+            match_date=new, status=DocumentFromDataStatus.NEW, change_reasons=[]
         )

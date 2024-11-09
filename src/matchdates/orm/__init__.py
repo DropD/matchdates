@@ -12,5 +12,17 @@ from .location import Location
 from .matchdate import MatchDate
 
 
-__all__ = ["Club", "Team", "Location", "MatchDate", "db", "get_db",
-           "base", "season", "club", "team", "location", "matchdate"]
+__all__ = [
+    "Club",
+    "Team",
+    "Location",
+    "MatchDate",
+    "db",
+    "get_db",
+    "base",
+    "season",
+    "club",
+    "team",
+    "location",
+    "matchdate",
+]

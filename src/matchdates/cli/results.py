@@ -28,11 +28,15 @@ def make_player(player_dict: Optional[dict[str, str]]) -> Optional[models.Player
     return None
 
 
-def make_pair(first: Optional[models.Player], second: Optional[models.Player]) -> Optional[models.DoublesPair]:
+def make_pair(
+    first: Optional[models.Player], second: Optional[models.Player]
+) -> Optional[models.DoublesPair]:
     if first and second:
         alphabetic = sorted([first, second], key=lambda p: p.name)
         pair = models.DoublesPair(first=alphabetic[0], second=alphabetic[1])
-        if existing := models.DoublesPair.find_one({"first": pair.first.fetch(), "second": pair.second.fetch()}):
+        if existing := models.DoublesPair.find_one(
+            {"first": pair.first.fetch(), "second": pair.second.fetch()}
+        ):
             pair = existing
         else:
             pair.commit()
@@ -56,7 +60,7 @@ def make_singles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
         set_1=models.Set(**s1) if s1 else None,
         set_2=models.Set(**s2) if s2 else None,
         set_3=models.Set(**s3) if s3 else None,
-        home_won=bool(singles_match["winner"] == 1)
+        home_won=bool(singles_match["winner"] == 1),
     )
 
 
@@ -83,7 +87,7 @@ def make_doubles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
         set_1=models.Set(**s1) if s1 else None,
         set_2=models.Set(**s2) if s2 else None,
         set_3=models.Set(**s3) if s3 else None,
-        home_won=bool(singles_match["winner"] == 1)
+        home_won=bool(singles_match["winner"] == 1),
     )
 
 
@@ -95,11 +99,13 @@ def load(ctx: click.Context, matches: list[models.MatchDate], allow_rescrape: bo
     if not matches:
         today = pendulum.today()
         last_season_start = date_utils.season_start(today)
-        matches = list(models.MatchDate.find(
-            {"date": {"$lt": date_utils.date_to_datetime(today), "$gt": last_season_start}}))
+        matches = list(
+            models.MatchDate.find(
+                {"date": {"$lt": date_utils.date_to_datetime(today), "$gt": last_season_start}}
+            )
+        )
     known_results = models.MatchResult.find({})
-    known_matchnrs = set(r.match_date.fetch().url.rsplit(
-        "/", 1)[1] for r in known_results)
+    known_matchnrs = set(r.match_date.fetch().url.rsplit("/", 1)[1] for r in known_results)
     requested_matchnrs = set(m.matchnr for m in matches)
     matchnrs = requested_matchnrs
     if not allow_rescrape:
@@ -111,9 +117,7 @@ def load(ctx: click.Context, matches: list[models.MatchDate], allow_rescrape: bo
     with tempfile.NamedTemporaryFile() as results_file:
         process = crawler.CrawlerProcess(
             settings={
-                "FEEDS": {
-                    results_file.name: {"format": "json"}
-                },
+                "FEEDS": {results_file.name: {"format": "json"}},
                 "LOG_LEVEL": "INFO",
             }
         )

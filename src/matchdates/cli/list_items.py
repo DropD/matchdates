@@ -1,4 +1,3 @@
-import collections
 import dataclasses
 from typing import Optional
 
@@ -6,7 +5,7 @@ import click
 import tabulate
 import sqlalchemy as sqla
 
-from .. import models, queries, format, orm
+from .. import models, format, orm
 from .main import main
 from . import param_types
 
@@ -29,10 +28,8 @@ def teams():
 def urls():
     """List match urls"""
     with sqla.orm.Session(orm.db.get_db()) as session:
-        items = [
-            [f"/{m.season.url}/{m.url}"]
-            for m in session.query(orm.MatchDate).all()
-        ]
+        items = [[f"/{m.season.url}/{m.url}"]
+                 for m in session.query(orm.MatchDate).all()]
     items.sort(key=lambda item: item[0])
     click.echo(tabulate.tabulate(items))
     session.close()
@@ -44,11 +41,13 @@ def locations():
     with sqla.orm.Session(orm.db.get_db()) as session:
         locations = session.query(orm.Location).all()
     locations.sort(key=lambda loc: loc.name)
-    click.echo(tabulate.tabulate(
-        [[location.name, location.address.replace(
-            "\n", ", ")] for location in locations],
-        headers=["Name", "Address"]
-    ))
+    click.echo(
+        tabulate.tabulate(
+            [[location.name, location.address.replace(
+                "\n", ", ")] for location in locations],
+            headers=["Name", "Address"],
+        )
+    )
 
 
 def player_names(player):
@@ -66,12 +65,8 @@ def player_names(player):
 
 
 def players_by_team(team: Optional[str]) -> None:
-    home_matches = list(models.MatchDate.find(
-        {"home_team": team}
-    ))
-    away_matches = list(models.MatchDate.find(
-        {"away_team": team}
-    ))
+    home_matches = list(models.MatchDate.find({"home_team": team}))
+    away_matches = list(models.MatchDate.find({"away_team": team}))
     home_results = list(models.MatchResult.find(
         {"match_date": {"$in": home_matches}}))
     away_results = list(models.MatchResult.find(
@@ -85,34 +80,35 @@ def players_by_team(team: Optional[str]) -> None:
         events: int
         matches: int
 
-    collected_players: dict[Player: list[str, str, str, int, int]] = {}
+    collected_players: dict[models.Player: list[str, str, str, int, int]] = {}
     for results, side in [(home_results, "home"), (away_results, "away")]:
         for result in results:
-            seen_players: set[Player] = set()
+            seen_players: set[models.Player] = set()
             for event in result.events:
                 for player in event.players[side]:
-                    collected_players.setdefault(player, PlayerRow(
-                        last=(names := player_names(player))[1],
-                        first=names[0],
-                        player_nr=player.url.rsplit("/", 1)[1],
-                        events=0,
-                        matches=0
-                    )).events += 1
+                    collected_players.setdefault(
+                        player,
+                        PlayerRow(
+                            last=(names := player_names(player))[1],
+                            first=names[0],
+                            player_nr=player.url.rsplit("/", 1)[1],
+                            events=0,
+                            matches=0,
+                        ),
+                    ).events += 1
                     if player not in seen_players:
                         collected_players[player].matches += 1
                     seen_players.add(player)
-    player_table = sorted([
+    player_table = sorted(
         [
-            player.last,
-            player.first,
-            player.player_nr,
-            player.events,
-            player.matches
-        ] for player in collected_players.values()
-    ], key=lambda row: (row[-1], row[-2]), reverse=True)
-    headers = [
-        "Last", "First", "player_nr", "Events Played", "Matches played"
-    ]
+            [player.last, player.first, player.player_nr,
+                player.events, player.matches]
+            for player in collected_players.values()
+        ],
+        key=lambda row: (row[-1], row[-2]),
+        reverse=True,
+    )
+    headers = ["Last", "First", "player_nr", "Events Played", "Matches played"]
 
     click.echo(tabulate.tabulate(player_table, headers=headers))
 
@@ -129,11 +125,16 @@ def players(ctx, by_team: Optional[str]) -> None:
     players = list(models.Player.find({}))
 
     players.sort(key=lambda player: player_names(player)[1])
-    click.echo(tabulate.tabulate(
-        [[(names := player_names(player))[1], names[0],
-          player.url.rsplit("/", 1)[1]] for player in players],
-        headers=["Last", "First", "player_nr"]
-    ))
+    click.echo(
+        tabulate.tabulate(
+            [
+                [(names := player_names(player))[1],
+                 names[0], player.url.rsplit("/", 1)[1]]
+                for player in players
+            ],
+            headers=["Last", "First", "player_nr"],
+        )
+    )
 
 
 # TODO: make an orm team param type
@@ -148,8 +149,14 @@ def matches(by_team: Optional[str], by_location: Optional[models.Location]):
         if by_team:
             # TODO: orm team param type should have brought up the team already
             team = session.query(orm.Team).filter_by(name=by_team).one()
-            matches = session.query(orm.MatchDate).filter(
-                orm.MatchDate.home_team.has(id=team.id) | orm.MatchDate.away_team.has(id=team.id)).all()
+            matches = (
+                session.query(orm.MatchDate)
+                .filter(
+                    orm.MatchDate.home_team.has(id=team.id)
+                    | orm.MatchDate.away_team.has(id=team.id)
+                )
+                .all()
+            )
         elif by_location:
             location = session.query(orm.Location).filter_by(
                 name=by_location.name).one()
@@ -158,6 +165,4 @@ def matches(by_team: Optional[str], by_location: Optional[models.Location]):
         else:
             matches = session.query(orm.MatchDate).all()
         matches.sort(key=lambda m: m.local_date_time)
-        click.echo(format.tabulate_match_dates(
-            matches
-        ))
+        click.echo(format.tabulate_match_dates(matches))

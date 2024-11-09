@@ -6,10 +6,7 @@ class Date(click.ParamType):
     name = "Date"
 
     def convert(
-        self,
-        value: str | pendulum.Date,
-        param: click.Parameter,
-        ctx: click.Context
+        self, value: str | pendulum.Date, param: click.Parameter, ctx: click.Context
     ) -> pendulum.Date:
         match value:
             case str():

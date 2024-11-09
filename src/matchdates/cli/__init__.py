@@ -11,4 +11,16 @@ from .graph import graph
 from . import calendar
 
 
-__all__ = ["main", "reload", "scan", "on_date", "upcoming", "list_items", "show", "calendar", "move", "results", "graph"]
+__all__ = [
+    "main",
+    "reload",
+    "scan",
+    "on_date",
+    "upcoming",
+    "list_items",
+    "show",
+    "calendar",
+    "move",
+    "results",
+    "graph",
+]

@@ -22,11 +22,13 @@ if typing.TYPE_CHECKING:
 
 def create_away_team_assoc(match_date_obj: MatchDate) -> AwayTeamAssociation:
     from .matchdate import AwayTeamAssociation
+
     return AwayTeamAssociation(match_date=match_date_obj)
 
 
 def create_home_team_assoc(match_date_obj: MatchDate) -> HomeTeamAssociation:
     from .matchdate import HomeTeamAssociation
+
     return HomeTeamAssociation(match_date=match_date_obj)
 
 
@@ -38,7 +40,8 @@ class Team(base.IDMixin, base.Base):
     team_nr: Mapped[int] = sqla.orm.mapped_column(unique=False)
 
     club_id: Mapped[int] = sqla.orm.mapped_column(
-        sqla.ForeignKey("club.id"), init=False, repr=False)
+        sqla.ForeignKey("club.id"), init=False, repr=False
+    )
     club: Mapped[Club] = sqla.orm.relationship(back_populates="teams")
 
     season_assocs: Mapped[list[TeamSeasonAssociation]] = sqla.orm.relationship(
@@ -49,7 +52,7 @@ class Team(base.IDMixin, base.Base):
         "season",
         creator=lambda season_obj: TeamSeasonAssociation(season=season_obj),
         default_factory=list,
-        repr=False
+        repr=False,
     )
 
     away_date_assocs: Mapped[list[AwayTeamAssociation]] = sqla.orm.relationship(
@@ -60,7 +63,7 @@ class Team(base.IDMixin, base.Base):
         "match_date",
         creator=create_away_team_assoc,
         default_factory=list,
-        repr=False
+        repr=False,
     )
 
     home_date_assocs: Mapped[list[HomeTeamAssociation]] = sqla.orm.relationship(
@@ -71,7 +74,7 @@ class Team(base.IDMixin, base.Base):
         "match_date",
         creator=create_home_team_assoc,
         default_factory=list,
-        repr=False
+        repr=False,
     )
 
 
@@ -83,9 +86,5 @@ class TeamSeasonAssociation(base.Base):
     season_id: Mapped[int] = sqla.orm.mapped_column(
         sqla.ForeignKey("season.id"), primary_key=True, init=False
     )
-    team: Mapped[Team] = sqla.orm.relationship(
-        back_populates="season_assocs", default=None
-    )
-    season: Mapped[Season] = sqla.orm.relationship(
-        back_populates="team_assocs", default=None
-    )
+    team: Mapped[Team] = sqla.orm.relationship(back_populates="season_assocs", default=None)
+    season: Mapped[Season] = sqla.orm.relationship(back_populates="team_assocs", default=None)

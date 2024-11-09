@@ -1,5 +1,4 @@
 import pendulum
-import sqlalchemy as sqla
 
 from matchdates import orm
 
@@ -9,7 +8,7 @@ def test_create_matchdate_minimal(db_session, location, season):
         url="league/23234/match/234",
         date_time=pendulum.now() + pendulum.Duration(days=7),
         location=location,
-        season=season
+        season=season,
     )
     db_session.add(mdt)
     db_session.commit()
@@ -24,7 +23,7 @@ def test_create_matchdate_full(db_session, location, team1, team2, season):
         location=location,
         home_team=team1,
         away_team=team2,
-        season=season
+        season=season,
     )
     db_session.add(mdt)
     db_session.commit()
@@ -55,8 +54,7 @@ def test_update_location(db_session, matchdate):
     db_session.add(matchdate)
     db_session.commit()
 
-    new_loc = orm.location.Location(
-        name="Bedminton Court", address="Dhuni Kolhu")
+    new_loc = orm.location.Location(name="Bedminton Court", address="Dhuni Kolhu")
 
     loaded = db_session.get(orm.matchdate.MatchDate, matchdate.id)
     loaded.location = new_loc
@@ -73,13 +71,9 @@ def test_update_with_history(db_session, matchdate):
     old_dt = matchdate.local_date_time
     old_loc = matchdate.location
     new_dt = pendulum.now()
-    new_loc = orm.location.Location(
-        name="Bedminton Court", address="Dhuni Kolhu"
-    )
+    new_loc = orm.location.Location(name="Bedminton Court", address="Dhuni Kolhu")
 
-    matchdate.update_with_history(
-        new_date_time=new_dt, new_location=new_loc
-    )
+    matchdate.update_with_history(new_date_time=new_dt, new_location=new_loc)
     db_session.commit()
 
     reloaded = db_session.get(orm.matchdate.MatchDate, matchdate.id)

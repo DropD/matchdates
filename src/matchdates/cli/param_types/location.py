@@ -15,5 +15,10 @@ class Location(click.Choice):
     def choices(self):
         return [loc.name for loc in models.Location.find({})]
 
-    def convert(self, value: str | models.Location, param: Optional[click.Parameter], ctx: Optional[click.Context]) -> models.Location:
+    def convert(
+        self,
+        value: str | models.Location,
+        param: Optional[click.Parameter],
+        ctx: Optional[click.Context],
+    ) -> models.Location:
         return models.Location.find_one({"name": value})

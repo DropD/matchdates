@@ -4,7 +4,6 @@ import enum
 import re
 from typing import Iterator, Optional
 
-import pendulum
 import scrapy
 
 from . import settings
@@ -128,7 +127,7 @@ class MatchResultSpider(scrapy.Spider):
         "DD1": "womens_doubles",
         "Women's Doubles1": "womens_doubles",
         "GD1": "mixed_doubles",
-        "GD2": "mixed_doubles_2"
+        "GD2": "mixed_doubles_2",
     }
 
     def __init__(self, matchnrs: Optional[list[int]] = None):
@@ -147,13 +146,14 @@ class MatchResultSpider(scrapy.Spider):
     ) -> Iterator[TeamMatchResult]:
         events = response.css(".match-group__item")
 
-        event_results = {self.event_name(
-            event): self.event_details(event) for event in events}
+        event_results = {self.event_name(event): self.event_details(event) for event in events}
         results = {
-            k: self.details_to_singles_res(v) for k, v in event_results.items()
+            k: self.details_to_singles_res(v)
+            for k, v in event_results.items()
             if re.match(r".*singles.*", k)
         } | {
-            k: self.details_to_doubles_res(v) for k, v in event_results.items()
+            k: self.details_to_doubles_res(v)
+            for k, v in event_results.items()
             if re.match(r".*doubles.*", k)
         }
 
@@ -161,8 +161,7 @@ class MatchResultSpider(scrapy.Spider):
         return TeamMatchResult(
             **results,
             winner=max(wins, key=lambda s: wins[s]),
-            url=response.url.replace(
-                f"https://www.{self.allowed_domains[0]}", "")
+            url=response.url.replace(f"https://www.{self.allowed_domains[0]}", ""),
         )
 
     def details_to_singles_res(self, details: dict[str, list[Player] | list[Set]]) -> SinglesResult:
@@ -174,7 +173,7 @@ class MatchResultSpider(scrapy.Spider):
             home_player=details["home_players"][0] if details["home_players"] else None,
             away_player=details["away_players"][0] if details["away_players"] else None,
             winner=details["winner"],
-            **score
+            **score,
         )
 
     def details_to_doubles_res(self, details: dict[str, list[Player] | list[Set]]) -> DoublesResult:
@@ -186,23 +185,25 @@ class MatchResultSpider(scrapy.Spider):
             home_pair=DoublesPair(
                 first=details["home_players"][0],
                 second=details["home_players"][1],
-            ) if details["home_players"] else None,
+            )
+            if details["home_players"]
+            else None,
             away_pair=DoublesPair(
                 first=details["away_players"][0],
                 second=details["away_players"][1],
-            ) if details["away_players"] else None,
+            )
+            if details["away_players"]
+            else None,
             winner=details["winner"],
-            **score
+            **score,
         )
 
     def event_details(self, event: scrapy.Selector) -> SinglesResult | DoublesResult:
         data = event.css(".match__body")
         rows = data.css(".match__row")
         assert len(rows) == 2
-        home_players = list(self.match_players(
-            rows[0].css(".match__row-title-value-content")))
-        away_players = list(self.match_players(
-            rows[1].css(".match__row-title-value-content")))
+        home_players = list(self.match_players(rows[0].css(".match__row-title-value-content")))
+        away_players = list(self.match_players(rows[1].css(".match__row-title-value-content")))
         sets = list(self.match_sets(event.css(".match__result > .points")))
 
         winner = None
@@ -218,7 +219,7 @@ class MatchResultSpider(scrapy.Spider):
             "home_players": home_players,
             "away_players": away_players,
             "sets": sets,
-            "winner": winner
+            "winner": winner,
         }
 
     def match_sets(self, sets: list[scrapy.Selector]) -> Iterator[Set]:
@@ -231,11 +232,9 @@ class MatchResultSpider(scrapy.Spider):
         for player in players:
             yield Player(
                 name=player.xpath("*//text()").get().strip(),
-                url=player.css("a::attr('href')").get()
+                url=player.css("a::attr('href')").get(),
             )
 
     def event_name(self, event: scrapy.Selector) -> str:
-        raw_event_name = event.css(
-            ".match__header-title-item"
-        ).xpath("*//text()").get().strip()
+        raw_event_name = event.css(".match__header-title-item").xpath("*//text()").get().strip()
         return self.event_name_map[raw_event_name]

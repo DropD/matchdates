@@ -34,7 +34,7 @@ class Season(base.IDMixin, base.Base):
         "team",
         creator=lambda team_obj: TeamSeasonAssociation(team=team_obj),
         default_factory=list,
-        repr=False
+        repr=False,
     )
 
     club_assocs: Mapped[list[ClubSeasonAssociation]] = sqla.orm.relationship(
@@ -45,7 +45,7 @@ class Season(base.IDMixin, base.Base):
         "club",
         creator=lambda club_obj: ClubSeasonAssociation(club=club_obj),
         default_factory=list,
-        repr=False
+        repr=False,
     )
 
     match_dates: Mapped[list[MatchDate]] = sqla.orm.relationship(
