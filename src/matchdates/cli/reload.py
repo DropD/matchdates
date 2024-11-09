@@ -6,10 +6,12 @@ import click
 import pendulum
 import textwrap
 from scrapy import crawler
+import sqlalchemy as sqla
 
+from .. import datespider, models, settings
+from .. import orm
 from .main import main
 from . import constants
-from .. import datespider, models, settings
 
 
 def recrawl() -> None:
@@ -120,3 +122,79 @@ def reload(allow_rescrape: bool) -> None:
                             constants.INDENT
                         )
                     )
+
+
+@main.command("reload-sqlite")
+@click.option("--allow-rescrape/--no-allow-rescrape", default=True)
+def reload_sqlite(allow_rescrape: bool) -> None:
+    """Grab the dates from online and update the db."""
+    session = sqla.orm.Session(orm.db.get_db())
+    datadir = settings.get_crawl_datadir(settings.SETTINGS)
+    datafiles = [
+        i for i in datadir.iterdir() if i.stem.startswith("matchdates")
+    ]
+    current_datafile = latest_datafile(datafiles)
+
+    if datafiles_outdated(datafiles) and allow_rescrape:
+        current_datafile = recrawl()
+    else:
+        click.echo("using existing data.")
+
+    click.echo("loading crawled data")
+    data = json.loads(current_datafile.read_text())
+
+    click.echo("updating database")
+
+    for item in data:
+        loc_data = item.pop("location")
+        location_result = orm.location.update_location(
+            **loc_data, session=session)
+        match location_result.status:
+            case models.DocumentFromDataStatus.CHANGED:
+                click.echo(
+                    f"Location address change: {location_result.location.name}")
+                click.echo(textwrap.indent(
+                    "\n".join(location_result.diff), constants.INDENT))
+            case models.DocumentFromDataStatus.NEW:
+                click.echo(
+                    f"New Location found: {location_result.location.name}")
+            case _:
+                ...
+
+        match_result = orm.matchdate.update_match_date(
+            location=location_result.location,
+            session=session,
+            ** item
+        )
+
+        match match_result.status:
+            case models.DocumentFromDataStatus.CHANGED:
+                if models.MatchDateChangeReason.DATE in match_result.change_reasons:
+                    click.echo("Date Change detected:")
+                    click.echo(
+                        textwrap.indent(
+                            str(match_result.match_date),
+                            constants.INDENT
+                        )
+                    )
+                    click.echo(
+                        textwrap.indent(
+                            f"Old Date: {match_result.archive_entry.date_time}",
+                            constants.INDENT
+                        )
+                    )
+                if models.MatchDateChangeReason.LOCATION in match_result.change_reasons:
+                    click.echo("Location Change detected:")
+                    click.echo(
+                        textwrap.indent(
+                            str(match_result.match_date),
+                            constants.INDENT
+                        )
+                    )
+                    click.echo(
+                        textwrap.indent(
+                            f"Old Location: {match_result.archive_entry.location.name}",
+                            constants.INDENT
+                        )
+                    )
+    session.close()

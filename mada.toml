@@ -15,3 +15,4 @@ club_name = "BC Zürich-Affoltern"
 
 [database]
 mongodb = "mongodb://mada-mongo.orb.local:27017"
+sqlite_path = "/Users/ricoh/Documents/mada/mada.sqlite"

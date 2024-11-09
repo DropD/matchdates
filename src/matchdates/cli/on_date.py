@@ -1,7 +1,8 @@
 import click
 import pendulum
+import sqlalchemy as sqla
 
-from .. import format, models, queries
+from .. import format, models, queries, orm
 from . import param_types
 from .main import main
 
@@ -15,11 +16,12 @@ def by_date(match_date: models.MatchDate) -> pendulum.DateTime:
 @click.option("--plusminus", type=int, default=0, help="Show this many days before and after.")
 def on_date(day, plusminus):
     """Display matches on DAY"""
-    matches = list(
-        models.MatchDate.find(
-            queries.match_filter_around_day(day, plusminus)
-    ))
-    matches.sort(key=by_date)
-    click.echo(
-        format.tabulate_match_dates(matches)
-    )
+    with sqla.orm.Session(orm.db.get_db()) as session:
+        matches = session.query(orm.MatchDate).filter(
+            (orm.MatchDate.date_time > day - pendulum.duration(days=plusminus))
+            & (orm.MatchDate.date_time < day + pendulum.duration(days=plusminus + 1))
+        ).all()
+        matches.sort(key=lambda m: m.local_date_time)
+        click.echo(
+            format.tabulate_match_dates(matches)
+        )

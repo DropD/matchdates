@@ -27,27 +27,29 @@ class Season(base.IDMixin, base.Base):
     url: Mapped[str] = sqla.orm.mapped_column(unique=True)
 
     team_assocs: Mapped[list[TeamSeasonAssociation]] = sqla.orm.relationship(
-        back_populates="season", cascade="all, delete-orphan", init=False
+        back_populates="season", cascade="all, delete-orphan", init=False, repr=False
     )
     teams: AssociationProxy[list[Team]] = association_proxy(
         "team_assocs",
         "team",
         creator=lambda team_obj: TeamSeasonAssociation(team=team_obj),
-        default_factory=list
+        default_factory=list,
+        repr=False
     )
 
     club_assocs: Mapped[list[ClubSeasonAssociation]] = sqla.orm.relationship(
-        back_populates="season", cascade="all, delete-orphan", init=False
+        back_populates="season", cascade="all, delete-orphan", init=False, repr=False
     )
     clubs: AssociationProxy[list[Club]] = association_proxy(
         "club_assocs",
         "club",
         creator=lambda club_obj: ClubSeasonAssociation(club=club_obj),
-        default_factory=list
+        default_factory=list,
+        repr=False
     )
 
     match_dates: Mapped[list[MatchDate]] = sqla.orm.relationship(
-        back_populates="season", default_factory=list
+        back_populates="season", default_factory=list, repr=False
     )
     # club_entries: Mapped[list["SeasonClub"]] = sqla.orm.relationship(
     #     back_populates="season"

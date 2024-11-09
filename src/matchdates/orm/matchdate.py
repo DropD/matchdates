@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import re
+
 import pendulum
 import sqlalchemy as sqla
 import sqlalchemy.orm
 from sqlalchemy.orm import Mapped
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
-from . import base
+from ..models import MatchDateFromDataResult, MatchDateChangeReason, DocumentFromDataStatus
+from . import base, db
 from .location import Location
 from .team import Team
 from .season import Season
@@ -21,7 +24,7 @@ class MatchDate(base.IDMixin, base.Base):
         sqla.DateTime)
 
     away_team_assoc: Mapped[AwayTeamAssociation] = sqla.orm.relationship(
-        back_populates="match_date", cascade="all, delete-orphan", init=False
+        back_populates="match_date", cascade="all, delete-orphan", init=False, repr=False
     )
     away_team: AssociationProxy[Team] = association_proxy(
         "away_team_assoc",
@@ -31,7 +34,7 @@ class MatchDate(base.IDMixin, base.Base):
     )
 
     home_team_assoc: Mapped[HomeTeamAssociation] = sqla.orm.relationship(
-        back_populates="match_date", cascade="all, delete-orphan", init=False
+        back_populates="match_date", cascade="all, delete-orphan", init=False, repr=False
     )
     home_team: AssociationProxy[Team] = association_proxy(
         "home_team_assoc",
@@ -41,24 +44,28 @@ class MatchDate(base.IDMixin, base.Base):
     )
 
     location_id: Mapped[int] = sqla.orm.mapped_column(
-        sqla.ForeignKey("location.id"), init=False)
+        sqla.ForeignKey("location.id"), init=False, repr=False)
     location: Mapped[Location] = sqla.orm.relationship(
         back_populates="match_dates", default=None)
 
     season_id: Mapped[int] = sqla.orm.mapped_column(
-        sqla.ForeignKey("season.id"), init=False
+        sqla.ForeignKey("season.id"), init=False, repr=False
     )
     season: Mapped[Season] = sqla.orm.relationship(
         back_populates="match_dates", default=None
     )
 
     changelog: Mapped[list[ChangeLogEntry]] = sqla.orm.relationship(
-        back_populates="match_date", default_factory=list
+        back_populates="match_date", default_factory=list, repr=False
     )
 
     @property
     def local_date_time(self) -> pendulum.DateTime:
         return pendulum.instance(self.date_time, tz=pendulum.local_timezone())
+
+    @property
+    def last_change(self) -> ChangeLogEntry:
+        return sorted(self.changelog, key=lambda e: e.archived_date_time)[-1]
 
     def update_with_history(
         self, new_date_time: pendulum.DateTime, new_location: Location
@@ -69,7 +76,9 @@ class MatchDate(base.IDMixin, base.Base):
         ):
             self.changelog.append(
                 ChangeLogEntry(
-                    location=self.location, date_time=self.date_time
+                    location=self.location,
+                    date_time=self.date_time,
+                    archived_date_time=pendulum.now()
                 )
             )
             self.date_time = new_date_time
@@ -123,3 +132,71 @@ class ChangeLogEntry(base.Base):
     @property
     def local_date_time(self) -> pendulum.DateTime:
         return pendulum.instance(self.date_time, tz=pendulum.local_timezone())
+
+
+def update_match_date(
+    *, session: sqla.orm.Session, url: str, date: str, home_team: str, away_team: str, location: Location
+) -> MatchDateFromDataResult:
+    """Find existing match date (update if necessary) or add a new one from upstream."""
+    urlmatch = re.match(
+        r".*(?P<season_url>league\/.*)\/(?P<match_url>team-match\/\d*).*", url)
+    season_url = urlmatch.group("season_url")
+    match_url = urlmatch.group("match_url")
+    existing = session.query(MatchDate).filter(
+        MatchDate.url == match_url).one_or_none()
+    session.add(existing)
+    session.add(location)
+    date_time = pendulum.DateTime.fromisoformat(
+        date).astimezone(pendulum.local_timezone())
+    if existing:
+        change_reasons = []
+        if existing.local_date_time != date_time:
+            change_reasons.append(MatchDateChangeReason.DATE)
+        if existing.location != location:
+            change_reasons.append(MatchDateChangeReason.LOCATION)
+
+        if change_reasons:
+            if (existing.last_change.date_time == existing.date_time
+                    and existing.last_change.location == existing.location):
+                existing.date_time = date_time
+                existing.location = location
+            else:
+                existing.update_with_history(
+                    new_date_time=date_time,
+                    new_location=location
+                )
+            session.commit()
+            return MatchDateFromDataResult(
+                match_date=existing,
+                status=DocumentFromDataStatus.CHANGED,
+                change_reasons=change_reasons,
+                archive_entry=existing.last_change
+            )
+        else:
+            return MatchDateFromDataResult(
+                match_date=existing,
+                status=DocumentFromDataStatus.UNCHANGED,
+                change_reasons=[]
+            )
+    else:
+        season = session.query(Season).filter_by(url=season_url).one_or_none()
+        if not season:
+            season = Season(url=season_url)
+            session.add(season)
+        new = MatchDate(
+            url=match_url,
+            date_time=date_time,
+            home_team=session.query(Team).filter(
+                Team.name == home_team).one_or_none(),
+            away_team=session.query(Team).filter(
+                Team.name == away_team).one_or_none(),
+            locaion=location,
+            season=season
+        )
+        session.add(new)
+        session.commit()
+        return MatchDateFromDataResult(
+            match_date=new,
+            status=DocumentFromDataStatus.NEW,
+            change_reasons=[]
+        )

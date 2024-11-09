@@ -24,16 +24,17 @@ class Club(base.IDMixin, base.Base):
     __tablename__ = "club"
     name: Mapped[str] = sqla.orm.mapped_column(unique=True)
     teams: Mapped[list[Team]] = sqla.orm.relationship(
-        back_populates="club", default_factory=list)
+        back_populates="club", default_factory=list, repr=False)
 
     season_assocs: Mapped[list[ClubSeasonAssociation]] = sqla.orm.relationship(
-        back_populates="club", cascade="all, delete-orphan", init=False
+        back_populates="club", cascade="all, delete-orphan", init=False, repr=False
     )
     seasons: AssociationProxy[list[Season]] = association_proxy(
         "season_assocs",
         "season",
         creator=lambda season_obj: ClubSeasonAssociation(season=season_obj),
-        default_factory=list
+        default_factory=list,
+        repr=False
     )
 
 

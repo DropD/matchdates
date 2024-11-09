@@ -4,7 +4,7 @@ import click
 import tabulate
 import pendulum
 
-from . import models
+from . import models, orm
 from . import settings
 
 
@@ -44,21 +44,23 @@ def tabulate_match_dates(matches: list[models.MatchDate]) -> str:
     """
     Format a table for CLI output from a list of match dates.
     """
-    headers = ["Weekday", "Date", "Time", "Home Team", "Away Team", "Nr", "Location"]
+    headers = ["Weekday", "Date", "Time",
+               "Home Team", "Away Team", "Nr", "Location"]
     return tabulate.tabulate(
         [
             (
-                (d := pendulum.instance(m.date)).format("dd"),
-                m.date.date().isoformat(),
+                (d := pendulum.instance(m.local_date_time)).format("dd"),
+                d.date().isoformat(),
                 d.format("HH:mm"),
-                color_team(m.home_team),
-                color_team(m.away_team),
+                color_team(m.home_team.name),
+                color_team(m.away_team.name),
                 m.url.rsplit("/", 1)[-1],
-                m.location.fetch().name
+                m.location.name
             ) for m in matches
         ],
         headers=headers
     )
+
 
 def short_form_match(match: models.MatchDate) -> str:
     """
@@ -67,4 +69,14 @@ def short_form_match(match: models.MatchDate) -> str:
     short_home = color_short_team(shorten_team_name(match.home_team))
     short_away = color_short_team(shorten_team_name(match.away_team))
     time = pendulum.instance(match.date).format("HH:mm")
+    return f"{short_home} vs {short_away} {time}"
+
+
+def short_form_orm_match(match: orm.MatchDate) -> str:
+    """
+    Format match data to fit within a calendar cell.
+    """
+    short_home = color_short_team(shorten_team_name(match.home_team.name))
+    short_away = color_short_team(shorten_team_name(match.away_team.name))
+    time = match.local_date_time.format("HH:mm")
     return f"{short_home} vs {short_away} {time}"

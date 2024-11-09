@@ -3,8 +3,9 @@ import dataclasses
 import click
 import pendulum
 import tabulate
+import sqlalchemy as sqla
 
-from .. import models, queries, format
+from .. import models, queries, format, orm
 from .main import main
 
 
@@ -78,6 +79,44 @@ def calendar(month, rules, year):
             ):
                 postfix = needsfix
         cal.add_to_date(match.date, format.short_form_match(
+            match) + " " + postfix)
+
+    click.echo(click.style(cal.first.format("MMMM"),
+               fg="green", bold=True, underline=True))
+    click.echo(
+        tabulate.tabulate(
+            cal.render(),
+            headers=["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], tablefmt="rounded_grid"
+        )
+    )
+
+
+@main.command("calendar-sqlite")
+@click.argument("month", type=int, default=pendulum.now().month)
+@click.option("--rules", type=str, default="all")
+@click.option("--year", type=int, default=pendulum.now().year)
+def calendar_sqlite(month, rules, year):
+    """Display calendar view of matches."""
+    session = sqla.orm.Session(orm.db.get_db())
+    cal = Month(first=pendulum.now().replace(month=month, year=year, day=1))
+    matches = session.query(orm.MatchDate).filter(
+        orm.MatchDate.date_time > cal.first, orm.MatchDate.date_time < cal.last).all()
+    bcza = session.query(orm.Club).filter_by(
+        name="BC Zürich-Affoltern").one_or_none()
+    for match in matches:
+        postfix = ""
+        needsfix = click.style("X", fg="red", bold=True)
+        if rules == "all":
+            if (
+                pendulum.WeekDay(match.local_date_time.weekday()) == pendulum.WEDNESDAY and
+                match.home_team.club == bcza and not match.home_team.team_nr == "S"
+            ):
+                postfix = needsfix
+            elif (
+                match.local_date_time.month == 4 and match.local_date_time.day > 17
+            ):
+                postfix = needsfix
+        cal.add_to_date(match.local_date_time, format.short_form_orm_match(
             match) + " " + postfix)
 
     click.echo(click.style(cal.first.format("MMMM"),

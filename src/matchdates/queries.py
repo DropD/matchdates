@@ -5,9 +5,11 @@ from typing import Any, Iterator
 from typing_extensions import Self
 
 import pendulum
+import sqlalchemy as sqla
 
-from . import models
 from . import date_utils
+from . import models
+from . import orm
 
 
 def match_filter_by_team(team_name: str) -> dict[str, dict[str, str]]:
@@ -68,12 +70,12 @@ class MatchClashSeverity(enum.IntEnum):
 class MatchClashResult:
     day: pendulum.Date
     team_name: str
-    matches: list[models.MatchDate]
+    matches: list[orm.MatchDate]
 
     @property
     def severity(self):
         combinations = itertools.combinations(
-            [pendulum.instance(m.date) for m in self.matches],
+            [pendulum.instance(m.date_time) for m in self.matches],
             2
         )
         time_between = [abs(c[0] - c[1]).total_hours() for c in combinations]
@@ -81,7 +83,7 @@ class MatchClashResult:
         if any([dt < 2.25 for dt in time_between]):
             return MatchClashSeverity.UNPLAYABLE
         # multiple locations on same day but potentially enough time if they are close
-        elif len(set(m.location.fetch().id for m in self.matches)) > 1:
+        elif len(set(m.location.id for m in self.matches)) > 1:
             # not enough time in the general case
             if any([dt < 3.75 for dt in time_between]):
                 return MatchClashSeverity.UNPLAYABLE
@@ -89,30 +91,30 @@ class MatchClashResult:
         # if we get to here it's in the same place with enough time
         return MatchClashSeverity.PROBABLY_INTENTIONAL
 
-    @classmethod
-    def from_query_item(
-        cls: type[Self],
-        *,
-        team_name: str,
-        _id: str,
-        count: int,
-        matches: list[str]
-    ) -> Self:
-        assert count > 1, "Trying to build a MatchClashResult from not a clash"
-        return cls(
-            day=pendulum.Date.fromisoformat(_id),
-            team_name=team_name,
-            matches=list(models.MatchDate.find({"url": {"$in": matches}}))
+
+def sqla_match_clashes(team: orm.Team, date=pendulum.Date) -> Iterator[MatchClashResult]:
+    with sqla.orm.Session(orm.db.get_db()) as session:
+        groups = list(
+            session.execute(
+                sqla.select(
+                    sqla.func.strftime("%Y-%m-%d", orm.MatchDate.date_time),
+                    sqla.func.aggregate_strings(orm.MatchDate.id, ", ")
+                ).filter(
+                    (
+                        (orm.MatchDate.home_team == team)
+                        | (orm.MatchDate.away_team == team)
+                    )
+                    & (orm.MatchDate.date_time > date_utils.season_start(date).naive())
+                    & (orm.MatchDate.date_time <= date_utils.season_end(date).naive())
+                ).group_by(
+                    sqla.func.strftime("%Y-%m-%d", orm.MatchDate.date_time)
+                ).having(sqla.func.count() > 1)
+            )
         )
-
-
-def match_same_day_for_team(team_name: str, date=pendulum.Date) -> Iterator[MatchClashResult]:
-    query = models.MatchDate.collection.aggregate([
-        {"$match": match_filter_from_to_day(
-            start=date_utils.season_start(date), end=date_utils.season_end(date))},
-        {"$match": match_filter_by_team(team_name)},
-        match_group_by_match_day(),
-        {"$match": {"count": {"$gt": 1}}}
-    ])
-    for item in query:
-        yield MatchClashResult.from_query_item(team_name=team_name, **item)
+        for date_str, match_ids in groups:
+            yield MatchClashResult(
+                day=pendulum.from_format(date_str, "YYYY-MM-DD"),
+                team_name=team.name,
+                matches=[session.get(orm.MatchDate, int(id))
+                         for id in match_ids.split(", ")]
+            )
