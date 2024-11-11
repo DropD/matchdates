@@ -83,7 +83,7 @@ class MatchClashResult:
 
 
 def sqla_match_clashes(team: orm.Team, date=pendulum.Date) -> Iterator[MatchClashResult]:
-    with sqla.orm.Session(orm.db.get_db()) as session:
+    with orm.db.get_session() as session:
         groups = list(
             session.execute(
                 sqla.select(

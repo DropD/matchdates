@@ -19,6 +19,8 @@ toml = "^0.10.2"
 sqlalchemy = "^2.0.36"
 pytest = "^8.3.3"
 alembic = "^1.13.3"
+pre-commit = "^4.0.1"
+thefuzz = "^0.22.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"

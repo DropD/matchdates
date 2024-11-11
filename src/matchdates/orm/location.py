@@ -32,7 +32,7 @@ class Location(base.IDMixin, base.Base):
 
 
 def update_location(name: str, address: str, session: sqla.orm.Session) -> LocationFromDataResult:
-    existing = session.query(Location).filter(Location.name == name).scalar()
+    existing = Location.one_or_none(name=name)
     if existing:
         if existing.address != address:
             diff = difflib.unified_diff(

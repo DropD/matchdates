@@ -1,9 +1,11 @@
 import collections
 
 import click
+import pendulum
 import tabulate
+import sqlalchemy as sqla
 
-from .. import models, date_utils
+from .. import orm
 from .main import main
 from . import param_types
 
@@ -19,59 +21,58 @@ def _style_info_table(info_table: list[tuple[str, str]]) -> list[tuple[str, str]
 
 @show.command("match")
 @click.argument("match", type=param_types.match.Match())
-def match(match: models.MatchDate) -> None:
+def match(match: orm.MatchDate) -> None:
     """Display info about a match"""
-    location = match.location.fetch()
-    click.echo(click.style(f"{match.home_team} vs. {match.away_team}", bold=True, underline=True))
-    click.echo("")
-    click.echo(
-        tabulate.tabulate(
-            _style_info_table(
-                [
-                    ("Time:", date_utils.enhance(match.date).format("dd, DD.MM.YYYY HH:mm")),
-                    ("Url:", "https://sb.tournamentsoftware.com" + match.url),
-                    ("MatchNr:", match.url.rsplit("/")[-1]),
-                    ("Location Name:", location.name),
-                    ("Address:", location.address),
-                ]
-            ),
-            tablefmt="plain",
+    with orm.db.get_session() as session:
+        location = match.location
+        click.echo(
+            click.style(
+                f"{match.home_team.name} vs. {match.away_team.name}", bold=True, underline=True
+            )
         )
-    )
+        click.echo("")
+        click.echo(
+            tabulate.tabulate(
+                _style_info_table(
+                    [
+                        ("Time:", match.local_date_time.format(
+                            "dd, DD.MM.YYYY HH:mm")),
+                        ("Url:", match.full_url),
+                        ("MatchNr:", match.url.rsplit("/")[-1]),
+                        ("Location Name:", location.name),
+                        ("Address:", location.address),
+                    ]
+                ),
+                tablefmt="plain",
+            )
+        )
 
 
 @show.command("location")
 @click.argument("location", type=param_types.location.Location())
-def location(location: models.Location) -> None:
+def location(location: orm.Location) -> None:
     """Display info about a location."""
-    info = models.MatchDate.collection.aggregate(
-        [
-            {"$match": {"location": location.pk}},
-            {
-                "$group": {
-                    "_id": None,
-                    "teams": {"$addToSet": "$home_team"},
-                    "dates": {"$addToSet": "$date"},
-                }
-            },
-        ]
-    ).next()
+    with orm.db.get_session() as session:
+        teams = set(m.home_team.name for m in location.match_dates)
+        times = collections.Counter(m.local_date_time.time()
+                                    for m in location.match_dates)
 
-    times = collections.Counter([date_utils.enhance(d).time() for d in info["dates"]])
-
-    time_info: str
-    match len(times):
-        case 1:
-            time_info = str(list(times.keys())[0])
-        case 2 | 3:
-            time_info = tabulate.tabulate(
-                [(f"{count}", "x", time.format("HH:mm")) for time, count in times.most_common()],
-                tablefmt="plain",
-            )
-        case _:
-            time_info = f"{min(times.keys())} - {max(times.keys())}"
-            if (usual_time := times.most_common(1)[0])[1] > times.total() / 5:
-                time_info += f", usually {usual_time[0]}"
+        time_info: str
+        match len(times):
+            case 1:
+                time_info = str(list(times.keys())[0])
+            case 2 | 3:
+                time_info = tabulate.tabulate(
+                    [
+                        (f"{count}", "x", time.format("HH:mm"))
+                        for time, count in times.most_common()
+                    ],
+                    tablefmt="plain",
+                )
+            case _:
+                time_info = f"{min(times.keys())} - {max(times.keys())}"
+                if (usual_time := times.most_common(1)[0])[1] > times.total() / 5:
+                    time_info += f", usually {usual_time[0]}"
 
     click.echo(click.style(location.name, bold=True, underline=True))
     click.echo("")
@@ -81,11 +82,49 @@ def location(location: models.Location) -> None:
                 [
                     ("Address:", location.address),
                     ("", ""),
-                    ("Home Teams:", "\n".join(sorted(info["teams"]))),
+                    ("Home Teams:", "\n".join(sorted(teams))),
                     ("", ""),
                     ("Match Times:", time_info),
                 ]
             ),
             tablefmt="plain",
+        )
+    )
+
+
+@show.command("team")
+@click.argument("team", type=param_types.team.Team())
+def team(team: orm.Team) -> None:
+    with orm.db.get_session() as session:
+        home_locations = set(m.location.name for m in team.home_dates)
+        all_matches = sorted(
+            [*team.home_dates, *team.away_dates], key=lambda m: m.local_date_time)
+        upcoming = tabulate.tabulate(
+            [
+                (m.local_date_time.format("dd YYYY-MM-DD"), m.full_url)
+                for m in all_matches
+                if m.local_date_time >= pendulum.now()
+            ]
+        )
+        nr_upcoming = len(
+            [m for m in all_matches if m.local_date_time >= pendulum.now()])
+        club = team.club.name
+        seasons = [s.url for s in team.seasons]
+
+    click.secho(team.name, bold=True, underline=True)
+    click.echo("")
+    click.echo(
+        tabulate.tabulate(
+            _style_info_table(
+                [
+                    ("Club:", club),
+                    ("", ""),
+                    ("Seasons:", seasons),
+                    ("", ""),
+                    ("Locations", home_locations),
+                    ("", ""),
+                    (f"Upcoming Matches ({nr_upcoming})", upcoming),
+                ]
+            )
         )
     )

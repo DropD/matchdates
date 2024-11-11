@@ -18,8 +18,9 @@ def list_items():
 @list_items.command("teams")
 def teams():
     """List teams"""
-    with sqla.orm.Session(orm.db.get_db()) as session:
-        team_names = [[i[0]] for i in session.query(orm.Team.name).all()]
+    with orm.db.get_session() as session:
+        team_names = [[i]
+                      for i in session.scalars(sqla.select(orm.Team.name)).all()]
     team_names.sort()
     click.echo(tabulate.tabulate(team_names))
 
@@ -27,9 +28,9 @@ def teams():
 @list_items.command("urls")
 def urls():
     """List match urls"""
-    with sqla.orm.Session(orm.db.get_db()) as session:
+    with orm.db.get_session() as session:
         items = [[f"/{m.season.url}/{m.url}"]
-                 for m in session.query(orm.MatchDate).all()]
+                 for m in session.scalars(orm.MatchDate.select()).all()]
     items.sort(key=lambda item: item[0])
     click.echo(tabulate.tabulate(items))
     session.close()
@@ -38,8 +39,8 @@ def urls():
 @list_items.command("locations")
 def locations():
     """List Locations"""
-    with sqla.orm.Session(orm.db.get_db()) as session:
-        locations = session.query(orm.Location).all()
+    with orm.db.get_session() as session:
+        locations = session.scalars(orm.Location.select()).all()
     locations.sort(key=lambda loc: loc.name)
     click.echo(
         tabulate.tabulate(
@@ -142,27 +143,25 @@ def players(ctx, by_team: Optional[str]) -> None:
 @list_items.command("matches")
 @click.option("--by-team", type=param_types.team.Team(), default=None)
 @click.option("--by-location", type=param_types.location.Location(), default=None)
-def matches(by_team: Optional[str], by_location: Optional[models.Location]):
+def matches(by_team: Optional[str], by_location: Optional[orm.Location]):
     """List matches"""
-    matches: list[models.MatchDate]
-    with sqla.orm.Session(orm.db.get_db()) as session:
+    matches: list[orm.MatchDate]
+    with orm.db.get_session() as session:
         if by_team:
-            # TODO: orm team param type should have brought up the team already
-            team = session.query(orm.Team).filter_by(name=by_team).one()
             matches = (
-                session.query(orm.MatchDate)
-                .filter(
-                    orm.MatchDate.home_team.has(id=team.id)
-                    | orm.MatchDate.away_team.has(id=team.id)
-                )
-                .all()
+                session.scalars(
+                    orm.MatchDate.select()
+                    .filter(
+                        orm.MatchDate.home_team.has(id=by_team.id)
+                        | orm.MatchDate.away_team.has(id=by_team.id)
+                    )
+                ).all()
             )
         elif by_location:
-            location = session.query(orm.Location).filter_by(
-                name=by_location.name).one()
-            matches = session.query(orm.MatchDate).filter_by(
-                location=location).all()
+            location = orm.Location.one(name=by_location.name)
+            matches = session.scalars(orm.MatchDate.select().filter_by(
+                location=location)).all()
         else:
-            matches = session.query(orm.MatchDate).all()
+            matches = orm.MatchDate.all()
         matches.sort(key=lambda m: m.local_date_time)
         click.echo(format.tabulate_match_dates(matches))

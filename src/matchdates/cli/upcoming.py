@@ -1,12 +1,13 @@
 import click
 import pendulum
+import sqlalchemy as sqla
 
-from .. import format, models, queries
+from .. import format, orm
 from .main import main
 
 
-def by_date(match_date: models.MatchDate) -> pendulum.DateTime:
-    return match_date.date
+def by_date(match_date: orm.MatchDate) -> pendulum.DateTime:
+    return match_date.date_time
 
 
 @main.command("upcoming")
@@ -19,11 +20,14 @@ def by_date(match_date: models.MatchDate) -> pendulum.DateTime:
 )
 def upcoming(amount, unit):
     """Display a certain AMOUNT of matches in the future"""
-    today = pendulum.today().date()
-    matches = list(
-        models.MatchDate.find(
-            queries.match_filter_from_to_day(today, today + pendulum.duration(**{unit: amount}))
-        )
-    )
-    matches.sort(key=by_date)
-    click.echo(format.tabulate_match_dates(matches))
+    with orm.db.get_session() as session:
+        today = pendulum.today().date()
+        matches = session.scalars(orm.MatchDate.select().filter(
+            (orm.MatchDate.date_time >= today) &
+            (
+                orm.MatchDate.date_time <= today +
+                pendulum.duration(**{unit: amount})
+            )
+        )).all()
+        matches.sort(key=by_date)
+        click.echo(format.tabulate_match_dates(matches))

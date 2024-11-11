@@ -1,6 +1,6 @@
 import click
 
-from matchdates import models
+from matchdates import models, orm
 
 
 class Match(click.ParamType):
@@ -13,7 +13,7 @@ class Match(click.ParamType):
             return value
 
         match_nr = int(value)
-        match = models.MatchDate.find_one({"url": {"$regex": f"/{match_nr}$"}})
+        match = orm.MatchDate.one(url=f"team-match/{match_nr}")
         if not match:
             self.fail(f"No match with nr {value} found!", param, ctx)
 

@@ -5,8 +5,7 @@ from matchdates import orm
 
 
 def test_create_location(db_session):
-    loc = orm.location.Location(
-        name="Blumenfeldhalle", address="Blumenfeldstrasse 50\n8046 Zürich")
+    loc = orm.location.Location(name="Blumenfeldhalle", address="Blumenfeldstrasse 50\n8046 Zürich")
     db_session.add(loc)
     db_session.commit()
     assert isinstance(loc.id, int)

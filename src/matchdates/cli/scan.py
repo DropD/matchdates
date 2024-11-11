@@ -12,15 +12,14 @@ from .. import queries, format, orm
 @main.command("scan")
 def scan():
     """Scan for clashes"""
-    with sqla.orm.Session(orm.db.get_db()) as session:
-        teams = session.query(orm.Team).all()
+    with orm.db.get_session() as session:
+        teams = orm.Team.all()
 
         for team in sorted(teams, key=lambda t: t.name):
             for clash_result in sorted(
                 queries.sqla_match_clashes(team=team, date=pendulum.today()),
                 key=lambda clash: clash.day,
             ):
-                session.add_all(clash_result.matches)
                 if not all(
                     match.local_date_time.format("HH:mm") == "00:00"
                     for match in clash_result.matches
@@ -33,8 +32,10 @@ def scan():
                     click.echo(
                         textwrap.indent(
                             click.style(
-                                format.tabulate_match_dates(clash_result.matches),
-                                fg=styling._color_for_severity(clash_result.severity),
+                                format.tabulate_match_dates(
+                                    clash_result.matches),
+                                fg=styling._color_for_severity(
+                                    clash_result.severity),
                             ),
                             constants.INDENT,
                         )
