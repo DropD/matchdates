@@ -29,6 +29,7 @@ def scan():
                     click.echo(
                         f"Multiple matches for team {format.color_team(clash_result.team_name)} on the {clash_result.day}:"
                     )
+                    session.add_all(clash_result.matches)
                     click.echo(
                         textwrap.indent(
                             click.style(

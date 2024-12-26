@@ -1,23 +1,28 @@
 import pendulum
 import pytest
-import sqlalchemy as sqla
-import sqlalchemy.orm
 
 from matchdates import orm
 from matchdates.orm.base import Base
 
 
+@pytest.fixture(autouse=True, scope="session")
+def db_context():
+    ctx = orm.db.DbContext.push("sqlite:///:memory:")
+    yield ctx
+    orm.db.DbContext.pop()
+
+
 @pytest.fixture()
-def db_engine():
-    engine = sqla.create_engine("sqlite:///:memory:")
+def db_engine(db_context):
+    engine = db_context.engine
     Base.metadata.create_all(engine)
     yield engine
     Base.metadata.drop_all(engine)
 
 
 @pytest.fixture
-def db_session(db_engine):
-    session = sqla.orm.Session(db_engine)
+def db_session(db_context, db_engine):
+    session = db_context.session
     yield session
     session.close()
 
@@ -26,7 +31,8 @@ def db_session(db_engine):
 def location():
     yield orm.location.Location(
         name="Badcity Badminton Center",
-        address="\n".join(["Badminton Street 1", "0001 Badcity", "Badmintonia"]),
+        address="\n".join(
+            ["Badminton Street 1", "0001 Badcity", "Badmintonia"]),
     )
 
 
