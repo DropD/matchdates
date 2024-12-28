@@ -6,6 +6,7 @@ from . import team
 from . import location
 from . import matchdate
 from . import player
+from . import result
 from .db import get_db
 from .club import Club
 from .team import Team

@@ -18,6 +18,7 @@ __all__ = ["Team"]
 
 if typing.TYPE_CHECKING:
     from .matchdate import MatchDate, AwayTeamAssociation, HomeTeamAssociation
+    from .player import Player, TeamAssociation
 
 
 def create_away_team_assoc(match_date_obj: MatchDate) -> AwayTeamAssociation:
@@ -30,6 +31,12 @@ def create_home_team_assoc(match_date_obj: MatchDate) -> HomeTeamAssociation:
     from .matchdate import HomeTeamAssociation
 
     return HomeTeamAssociation(match_date=match_date_obj)
+
+
+def create_player_team_assoc(player_obj: Player) -> TeamAssociation:
+    from .player import TeamAssociation
+
+    return TeamAssociation(player=player_obj)
 
 
 class Team(base.IDMixin, base.Base):
@@ -77,6 +84,16 @@ class Team(base.IDMixin, base.Base):
         repr=False,
     )
 
+    player_assocs: Mapped[list[TeamAssociation]] = sqla.orm.relationship(
+        back_populates="team", cascade="all, delete-orphan", init=False, repr=False
+    )
+    players: AssociationProxy[list[Player]] = association_proxy(
+        "player_assocs",
+        "player",
+        creator=create_player_team_assoc,
+        default_factory=list, repr=False
+    )
+
 
 class TeamSeasonAssociation(base.Base):
     __tablename__ = "team_season_assoc"
@@ -86,5 +103,7 @@ class TeamSeasonAssociation(base.Base):
     season_id: Mapped[int] = sqla.orm.mapped_column(
         sqla.ForeignKey("season.id"), primary_key=True, init=False
     )
-    team: Mapped[Team] = sqla.orm.relationship(back_populates="season_assocs", default=None)
-    season: Mapped[Season] = sqla.orm.relationship(back_populates="team_assocs", default=None)
+    team: Mapped[Team] = sqla.orm.relationship(
+        back_populates="season_assocs", default=None)
+    season: Mapped[Season] = sqla.orm.relationship(
+        back_populates="team_assocs", default=None)

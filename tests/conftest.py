@@ -66,3 +66,40 @@ def matchdate(location, team1, team2, season):
         away_team=team2,
         season=season,
     )
+
+
+@pytest.fixture
+def anas():
+    yield orm.player.Player(url="player/1", name="Anders Antonsen")
+
+
+@pytest.fixture
+def kodai():
+    yield orm.player.Player(url="player/2", name="Kodai Naraoke")
+
+
+@pytest.fixture
+def singles_result(matchdate, anas, kodai):
+    matchdate.home_team.players.append(anas)
+    matchdate.away_team.players.append(kodai)
+    singlesresult = orm.result.SinglesResult(
+        match_date=matchdate,
+        category=orm.result.ResultCategory.HE1,
+        home_player_result=None,
+        away_player_result=None
+    )
+    home_player_result = orm.result.HomePlayerResult(
+        player=anas,
+        singles_result=singlesresult,
+        set_1_points=21,
+        set_2_points=24,
+        win=True
+    ),
+    away_player_result = orm.result.AwayPlayerResult(
+        player=kodai,
+        singles_result=singlesresult,
+        set_1_points=13,
+        set_2_points=22,
+        win=False
+    )
+    yield singlesresult

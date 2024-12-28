@@ -5,8 +5,14 @@ from typing import Self
 
 import sqlalchemy as sqla
 from sqlalchemy.orm import Mapped
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 from . import base, db
+from .team import Team
+
+
+if typing.TYPE_CHECKING:
+    from .result import AwayPlayerResult, HomePlayerResult
 
 
 class Player(base.IDMixin, base.Base):
@@ -23,6 +29,23 @@ class Player(base.IDMixin, base.Base):
         repr=False,
         default_factory=list
     )
+
+    team_assocs: Mapped[list[TeamAssociation]] = sqla.orm.relationship(
+        back_populates="player",
+        init=False, repr=False, default_factory=list
+    )
+    teams: AssociationProxy[list[Team]] = association_proxy(
+        "team_assocs",
+        "team",
+        creator=lambda team_obj: TeamAssociation(team=team_obj),
+        default_factory=list,
+        repr=False,
+    )
+
+    away_singles_results: Mapped[list[AwayPlayerResult]] = sqla.orm.relationship(
+        back_populates="player", init=False, repr=False, default_factory=list)
+    home_singles_results: Mapped[list[HomePlayerResult]] = sqla.orm.relationship(
+        back_populates="player", init=False, repr=False, default_factory=list)
 
     @sqla.orm.validates("doubles_pairs")
     def validate_players(self, key: int, doubles_pair: DoublesPair) -> DoublesPair:
@@ -111,4 +134,19 @@ class DoublesAssociation(base.Base):
     )
     player_id: Mapped[int] = sqla.orm.mapped_column(
         sqla.ForeignKey(Player.id), primary_key=True
+    )
+
+
+class TeamAssociation(base.Base):
+    __tablename__ = "player_teams_association"
+    team_id: Mapped[int] = sqla.orm.mapped_column(
+        sqla.ForeignKey(Team.id), primary_key=True, init=False
+    )
+    player_id: Mapped[int] = sqla.orm.mapped_column(
+        sqla.ForeignKey(Player.id), primary_key=True, init=False
+    )
+    team: Mapped[Team] = sqla.orm.relationship(
+        back_populates="player_assocs", default=None)
+    player: Mapped[Player] = sqla.orm.relationship(
+        back_populates="team_assocs", default=None
     )

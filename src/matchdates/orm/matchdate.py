@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import typing
 
 import pendulum
 import sqlalchemy as sqla
@@ -13,6 +14,10 @@ from . import base
 from .location import Location
 from .team import Team
 from .season import Season
+
+
+if typing.TYPE_CHECKING:
+    from .result import SinglesResult
 
 
 class MatchDate(base.IDMixin, base.Base):
@@ -56,6 +61,10 @@ class MatchDate(base.IDMixin, base.Base):
         back_populates="match_dates", default=None)
 
     changelog: Mapped[list[ChangeLogEntry]] = sqla.orm.relationship(
+        back_populates="match_date", default_factory=list, repr=False
+    )
+
+    singles_results: Mapped[list[SinglesResult]] = sqla.orm.relationship(
         back_populates="match_date", default_factory=list, repr=False
     )
 
