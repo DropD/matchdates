@@ -12,7 +12,9 @@ from .team import Team
 
 
 if typing.TYPE_CHECKING:
-    from .result import AwayPlayerResult, HomePlayerResult
+    from .result import (
+        AwayPairResult, AwayPlayerResult, HomePairResult, HomePlayerResult
+    )
 
 
 class Player(base.IDMixin, base.Base):
@@ -74,6 +76,17 @@ class DoublesPair(base.IDMixin, base.Base):
         secondary="player_doubles_association",
         back_populates="doubles_pairs"
     )  # TODO: this is easy to duplicate?
+
+    away_doubles_results: Mapped[list[AwayPairResult]] = sqla.orm.relationship(
+
+        back_populates="doubles_pair", init=False, repr=False,
+        default_factory=list
+    )
+    home_doubles_results: Mapped[list[HomePairResult]] = sqla.orm.relationship(
+
+        back_populates="doubles_pair", init=False, repr=False,
+        default_factory=list
+    )
 
     def __post_init__(self) -> None:
         if len(self.players) > 2:

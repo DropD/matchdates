@@ -17,7 +17,7 @@ from .season import Season
 
 
 if typing.TYPE_CHECKING:
-    from .result import SinglesResult
+    from .result import SinglesResult, DoublesResult
 
 
 class MatchDate(base.IDMixin, base.Base):
@@ -65,6 +65,10 @@ class MatchDate(base.IDMixin, base.Base):
     )
 
     singles_results: Mapped[list[SinglesResult]] = sqla.orm.relationship(
+        back_populates="match_date", default_factory=list, repr=False
+    )
+
+    doubles_results: Mapped[list[DoublesResult]] = sqla.orm.relationship(
         back_populates="match_date", default_factory=list, repr=False
     )
 

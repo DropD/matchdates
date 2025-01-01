@@ -79,6 +79,16 @@ def kodai():
 
 
 @pytest.fixture
+def victor():
+    yield orm.player.Player(url="player/3", name="Victor Axelsen")
+
+
+@pytest.fixture
+def yuta():
+    yield orm.player.Player(url="player/4", name="Yuta Watanabe")
+
+
+@pytest.fixture
 def singles_result(matchdate, anas, kodai):
     matchdate.home_team.players.append(anas)
     matchdate.away_team.players.append(kodai)
@@ -103,3 +113,32 @@ def singles_result(matchdate, anas, kodai):
         win=False
     )
     yield singlesresult
+
+
+@pytest.fixture
+def doubles_result(matchdate, anas, kodai, victor, yuta):
+    matchdate.home_team.players.extend([anas, victor])
+    matchdate.away_team.players.extend([kodai, yuta])
+    doublesresult = orm.result.DoublesResult(
+        match_date=matchdate,
+        category=orm.result.ResultCategory.HD1,
+        home_pair_result=None,
+        away_pair_result=None
+    )
+    home_pair = orm.player.DoublesPair(players={anas, victor})
+    away_pair = orm.player.DoublesPair(players={kodai, yuta})
+    home_pair_result = orm.result.HomePairResult(
+        doubles_pair=home_pair,
+        doubles_result=doublesresult,
+        set_1_points=14,
+        set_2_points=21,
+        set_3_points=5
+    )
+    away_pair_result = orm.result.AwayPairResult(
+        doubles_pair=away_pair,
+        doubles_result=doublesresult,
+        set_1_points=21,
+        set_2_points=19,
+        set_3_points=21
+    )
+    yield doublesresult
