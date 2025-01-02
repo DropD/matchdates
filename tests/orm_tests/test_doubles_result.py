@@ -4,8 +4,6 @@ from matchdates import orm
 def test_create_doubles_result(
     db_session, matchdate, team1, team2, anas, kodai, victor, yuta
 ):
-    matchdate.home_team.players.extend([anas, victor])
-    matchdate.away_team.players.extend([kodai, yuta])
     home_pair = orm.player.DoublesPair(players={anas, victor})
     away_pair = orm.player.DoublesPair(players={kodai, yuta})
     db_session.add_all([matchdate, home_pair, away_pair])
@@ -14,8 +12,6 @@ def test_create_doubles_result(
     testee = orm.result.DoublesResult(
         match_date=matchdate,
         category=orm.result.ResultCategory.HD1,
-        home_pair_result=None,
-        away_pair_result=None
     )
     home_pair_result = orm.result.HomePairResult(
         doubles_pair=home_pair,

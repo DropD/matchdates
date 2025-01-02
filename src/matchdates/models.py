@@ -258,7 +258,8 @@ class HistoricMatchDate(umongo.Document):
         if self_date != match_date:
             changeset.append(f"{self_date} -> {match_date}")
         if self.location != match.location:
-            changeset.append(f"{self.location.fetch()} -> {match.location.fetch()}")
+            changeset.append(
+                f"{self.location.fetch()} -> {match.location.fetch()}")
         changes = " ".join(changeset)
         return f"CHANGED: {match.home_team} vs {match.away_team}: {changes}"
 

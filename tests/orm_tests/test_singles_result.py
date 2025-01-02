@@ -3,16 +3,12 @@ from matchdates import orm
 
 def test_create_singles_result(db_session, matchdate, team1, team2, anas, kodai):
 
-    anas.teams.append(matchdate.home_team)
-    kodai.teams.append(matchdate.away_team)
     db_session.add_all([anas, kodai, matchdate])
     db_session.commit()
 
     testee = orm.result.SinglesResult(
         match_date=matchdate,
         category=orm.result.ResultCategory.HE1,
-        home_player_result=None,
-        away_player_result=None
     )
     db_session.add(testee)
     db_session.commit()

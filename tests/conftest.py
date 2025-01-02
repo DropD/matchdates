@@ -69,34 +69,30 @@ def matchdate(location, team1, team2, season):
 
 
 @pytest.fixture
-def anas():
-    yield orm.player.Player(url="player/1", name="Anders Antonsen")
+def anas(team1):
+    yield orm.player.Player(url="player/1", name="Anders Antonsen", teams=[team1])
 
 
 @pytest.fixture
-def kodai():
-    yield orm.player.Player(url="player/2", name="Kodai Naraoke")
+def kodai(team2):
+    yield orm.player.Player(url="player/2", name="Kodai Naraoke", teams=[team2])
 
 
 @pytest.fixture
-def victor():
-    yield orm.player.Player(url="player/3", name="Victor Axelsen")
+def victor(team1):
+    yield orm.player.Player(url="player/3", name="Victor Axelsen", teams=[team1])
 
 
 @pytest.fixture
-def yuta():
-    yield orm.player.Player(url="player/4", name="Yuta Watanabe")
+def yuta(team2):
+    yield orm.player.Player(url="player/4", name="Yuta Watanabe", teams=[team2])
 
 
 @pytest.fixture
 def singles_result(matchdate, anas, kodai):
-    matchdate.home_team.players.append(anas)
-    matchdate.away_team.players.append(kodai)
     singlesresult = orm.result.SinglesResult(
         match_date=matchdate,
         category=orm.result.ResultCategory.HE1,
-        home_player_result=None,
-        away_player_result=None
     )
     home_player_result = orm.result.HomePlayerResult(
         player=anas,
@@ -117,13 +113,9 @@ def singles_result(matchdate, anas, kodai):
 
 @pytest.fixture
 def doubles_result(matchdate, anas, kodai, victor, yuta):
-    matchdate.home_team.players.extend([anas, victor])
-    matchdate.away_team.players.extend([kodai, yuta])
     doublesresult = orm.result.DoublesResult(
         match_date=matchdate,
         category=orm.result.ResultCategory.HD1,
-        home_pair_result=None,
-        away_pair_result=None
     )
     home_pair = orm.player.DoublesPair(players={anas, victor})
     away_pair = orm.player.DoublesPair(players={kodai, yuta})
@@ -142,3 +134,107 @@ def doubles_result(matchdate, anas, kodai, victor, yuta):
         set_3_points=21
     )
     yield doublesresult
+
+
+@pytest.fixture
+def match_result(matchdate, singles_result, doubles_result, anas, kodai, victor, yuta):
+    rasmus = orm.player.Player(
+        url="player/5", name="Rasmus Gemke", teams=[matchdate.home_team])
+    line = orm.player.Player(
+        url="player/6", name="Line Christophersen", teams=[matchdate.home_team])
+    mia = orm.player.Player(
+        url="player/7", name="Mia Blichfeldt", teams=[matchdate.home_team])
+    endo = orm.player.Player(
+        url="player/8", name="Endo Kirakawa", teams=[matchdate.away_team])
+    akane = orm.player.Player(
+        url="player/9", name="Akane Yamaguchi", teams=[matchdate.away_team])
+    arisa = orm.player.Player(
+        url="player/10", name="Arisa Higashino", teams=[matchdate.away_team])
+    rasmus_line = orm.player.DoublesPair(players={rasmus, line})
+    endo_arisa = orm.player.DoublesPair(players={endo, arisa})
+    line_mia = orm.player.DoublesPair(players={line, mia})
+    akane_arisa = orm.player.DoublesPair(players={akane, arisa})
+
+    he2 = orm.result.SinglesResult(
+        match_date=matchdate, category=orm.result.ResultCategory.HE2)
+    he3 = orm.result.SinglesResult(
+        match_date=matchdate, category=orm.result.ResultCategory.HE3)
+    de1 = orm.result.SinglesResult(
+        match_date=matchdate, category=orm.result.ResultCategory.DE1)
+    dd1 = orm.result.DoublesResult(
+        match_date=matchdate, category=orm.result.ResultCategory.DD1)
+    xd1 = orm.result.DoublesResult(
+        match_date=matchdate, category=orm.result.ResultCategory.MX1)
+
+    he2_h = orm.result.HomePlayerResult(
+        player=victor,
+        singles_result=he2,
+        set_1_points=21,
+        set_2_points=21
+    )
+    he2_a = orm.result.AwayPlayerResult(
+        player=yuta,
+        singles_result=he2,
+        set_1_points=3,
+        set_2_points=18
+    )
+
+    he3_h = orm.result.HomePlayerResult(
+        player=rasmus,
+        singles_result=he3,
+        set_1_points=21,
+        set_2_points=21
+    )
+    he3_a = orm.result.AwayPlayerResult(
+        player=endo,
+        singles_result=he3,
+        set_1_points=17,
+        set_2_points=14
+    )
+
+    de1_h = orm.result.HomePlayerResult(
+        player=mia,
+        singles_result=de1,
+        set_1_points=14,
+        set_2_points=11
+    )
+    de1_a = orm.result.AwayPlayerResult(
+        player=akane,
+        singles_result=de1,
+        set_1_points=21,
+        set_2_points=21
+    )
+
+    dd1_h = orm.result.HomePairResult(
+        doubles_pair=line_mia,
+        doubles_result=dd1,
+        set_1_points=19,
+        set_2_points=19
+    )
+    dd1_a = orm.result.AwayPairResult(
+        doubles_pair=akane_arisa,
+        doubles_result=dd1,
+        set_1_points=21,
+        set_2_points=21
+    )
+
+    xd1_h = orm.result.HomePairResult(
+        doubles_pair=rasmus_line,
+        doubles_result=xd1,
+        set_1_points=21,
+        set_2_points=21
+    )
+    xd1_a = orm.result.AwayPairResult(
+        doubles_pair=endo_arisa,
+        doubles_result=xd1,
+        set_1_points=17,
+        set_2_points=18
+    )
+
+    yield orm.result.MatchResult(
+        match_date=matchdate,
+        winner=orm.result.WinningTeam.HOME,
+        walkover=False,
+        home_points=2,
+        away_points=1
+    )

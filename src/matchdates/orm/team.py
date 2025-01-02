@@ -94,6 +94,9 @@ class Team(base.IDMixin, base.Base):
         default_factory=list, repr=False
     )
 
+    def __str__(self):
+        return self.name
+
 
 class TeamSeasonAssociation(base.Base):
     __tablename__ = "team_season_assoc"

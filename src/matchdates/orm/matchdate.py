@@ -17,7 +17,7 @@ from .season import Season
 
 
 if typing.TYPE_CHECKING:
-    from .result import SinglesResult, DoublesResult
+    from .result import SinglesResult, DoublesResult, MatchResult
 
 
 class MatchDate(base.IDMixin, base.Base):
@@ -72,6 +72,10 @@ class MatchDate(base.IDMixin, base.Base):
         back_populates="match_date", default_factory=list, repr=False
     )
 
+    match_result: Mapped[MatchResult] = sqla.orm.relationship(
+        back_populates="match_date", default=None, repr=False
+    )
+
     @property
     def local_date_time(self) -> pendulum.DateTime:
         return pendulum.instance(self.date_time, tz=pendulum.local_timezone())
@@ -95,6 +99,11 @@ class MatchDate(base.IDMixin, base.Base):
             )
             self.date_time = new_date_time
             self.location = new_location
+
+    def __str__(self) -> str:
+        return (
+            f"{self.home_team} vs {self.away_team} on {self.date_time} at {self.location.name}"
+        )
 
 
 class AwayTeamAssociation(base.Base):
