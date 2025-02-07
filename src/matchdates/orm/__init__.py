@@ -15,6 +15,7 @@ from .location import Location
 from .matchdate import MatchDate
 from .player import Player, DoublesPair
 from .errors import IncompleteModelError
+from .result import MatchResult, ResultCategory, SinglesResult, DoublesResult
 
 
 __all__ = [
@@ -22,9 +23,13 @@ __all__ = [
     "Team",
     "Location",
     "MatchDate",
+    "MatchResult",
     "Player",
     "DoublesPair",
     "IncompleteModelError",
+    "ResultCategory",
+    "SinglesResult",
+    "DoublesResult",
     "db",
     "get_db",
     "base",

@@ -7,9 +7,9 @@ class Match(click.ParamType):
     name = "Match"
 
     def convert(
-        self, value: str | int | models.MatchDate, param: click.Parameter, ctx: click.Context
-    ) -> models.MatchDate:
-        if isinstance(value, models.MatchDate):
+        self, value: str | int | orm.MatchDate, param: click.Parameter, ctx: click.Context
+    ) -> orm.MatchDate:
+        if isinstance(value, orm.MatchDate):
             return value
 
         match_nr = int(value)

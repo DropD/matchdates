@@ -40,7 +40,7 @@ class Base(sqla.orm.MappedAsDataclass, sqla.orm.DeclarativeBase):
 
     @classmethod
     def one_or_none(cls: type[Self], **filters: Any) -> Self | None:
-        return db.get_session().session.scalars(cls.select().filter_by(**filters)).one_or_none()
+        return db.get_session().scalars(cls.select().filter_by(**filters)).one_or_none()
 
 
 class IDMixin(sqla.orm.MappedAsDataclass):

@@ -1,0 +1,63 @@
+[
+{
+    "mens_singles_1": {
+        "home_player": {"name": "Peyton Cheong Phey Denn", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/4152"},
+        "away_player": {"name": "Joel Wanner", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3294"},
+        "set_1": {"home_points": 21, "away_points": 18, "retired": null},
+        "set_2": {"home_points": 21, "away_points": 12, "retired": null},
+        "set_3": null,
+        "winner": 1
+    },
+    "mens_singles_2": {
+        "home_player": {"name": "Christoph Zellmann", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/4509"},
+        "away_player": {"name": "Michael Scheike", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3296"},
+        "set_1": {"home_points": 19, "away_points": 21, "retired": null},
+        "set_2": {"home_points": 15, "away_points": 21, "retired": null},
+        "set_3": null,
+        "winner": 2
+    },
+    "mens_singles_3": {
+        "home_player": {"name": "Ouyu Xu", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/4478"},
+        "away_player": {"name": "Constantin Koller", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3299"},
+        "set_1": {"home_points": 21, "away_points": 13, "retired": null},
+        "set_2": {"home_points": 21, "away_points": 10, "retired": null},
+        "set_3": null,
+        "winner": 1
+    },
+    "mens_doubles": {
+        "home_pair": {"first": {"name": "Peyton Cheong Phey Denn", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/4152"}, "second": {"name": "Ouyu Xu", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/4478"}},
+        "away_pair": {"first": {"name": "Constantin Koller", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3299"}, "second": {"name": "Michael Scheike", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3296"}},
+        "set_1": {"home_points": 21, "away_points": 7, "retired": null},
+        "set_2": {"home_points": 21, "away_points": 15, "retired": null},
+        "set_3": null,
+        "winner": 1
+    },
+    "womens_singles": {
+        "home_player": {"name": "Monica Chiosa", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/2848"},
+        "away_player": {"name": "Sydney Wijngaards", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3291"},
+        "set_1": {"home_points": 21, "away_points": 10, "retired": null},
+        "set_2": {"home_points": 21, "away_points": 17, "retired": null},
+        "set_3": null,
+        "winner": 1
+    },
+    "womens_doubles": {
+        "home_pair": {"first": {"name": "Alina Dei Kalo", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3031"}, "second": {"name": "Katja D\u00f6rlemann", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3036"}},
+        "away_pair": {"first": {"name": "Annika K\u00e4ser", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3292"}, "second": {"name": "Sydney Wijngaards", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3291"}},
+        "set_1": {"home_points": 21, "away_points": 13, "retired": null},
+        "set_2": {"home_points": 21, "away_points": 15, "retired": null},
+        "set_3": null,
+        "winner": 1
+    },
+    "mixed_doubles": {
+        "home_pair": {"first": {"name": "Katja D\u00f6rlemann", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3036"}, "second": {"name": "Christoph Zellmann", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/4509"}},
+        "away_pair": {"first": {"name": "Annika K\u00e4ser", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3292"}, "second": {"name": "Joel Wanner", "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/player/3294"}},
+        "set_1": {"home_points": 19, "away_points": 21, "retired": null},
+        "set_2": {"home_points": 18, "away_points": 21, "retired": null},
+        "set_3": null,
+        "winner": 2
+    },
+    "winner": 1,
+    "url": "/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/7148",
+    "mixed_doubles_2": null
+}
+]

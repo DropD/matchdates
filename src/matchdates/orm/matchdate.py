@@ -105,6 +105,10 @@ class MatchDate(base.IDMixin, base.Base):
             f"{self.home_team} vs {self.away_team} on {self.date_time} at {self.location.name}"
         )
 
+    @property
+    def matchnr(self) -> str:
+        return self.url.rsplit("/", 1)[1]
+
 
 class AwayTeamAssociation(base.Base):
     __tablename__ = "matchdate_away_team_assoc"

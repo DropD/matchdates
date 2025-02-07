@@ -26,10 +26,10 @@ def test_render(db_session, match_result):
         "BC Zürich-Affoltern 1 vs BC Zürich-Affoltern 2")
     assert re.match(
         r"\s*HE1\s*Anders Antonsen\s*w\s*Kodai Naraoke\s*21:13 24:22",
-        lines[2]
+        lines[3]
     )
     assert re.match(
         r"\s*DD1\s*Line Christophersen / Mia Blichfeldt\s*"
         r"Akane Yamaguchi / Arisa Higashino\s*w\s*19:21 19:21",
-        lines[7]
+        lines[8]
     )

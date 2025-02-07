@@ -50,4 +50,4 @@ class MatchResult(base.IDMixin, base.Base):
         )
         results_str = tabulate.tabulate(
             [[res.category.value.upper()] + res.table_row for res in results])
-        return f"{self.match_date}\n{textwrap.indent(results_str, prefix=' '*2)}"
+        return f"{self.match_date}\npoints {self.home_points} : {self.away_points}\n{textwrap.indent(results_str, prefix=' '*2)}"
