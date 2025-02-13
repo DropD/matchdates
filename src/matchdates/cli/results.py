@@ -6,7 +6,7 @@ import click
 import pendulum
 from scrapy import crawler
 
-from matchdates import date_utils, models, marespider, orm
+from matchdates import common_data, date_utils, models, marespider, orm
 from .main import main
 from . import param_types
 
@@ -91,7 +91,7 @@ def make_singles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
 
 
 def make_singles_sql(
-    category: orm.ResultCategory, singles_match: dict[str, dict | int], match_date: orm.MatchDate
+    category: common_data.ResultCategory, singles_match: dict[str, dict | int], match_date: orm.MatchDate
 ) -> models.SinglesResult:
     home_player = make_player_sql(singles_match["home_player"])
     away_player = make_player_sql(singles_match["away_player"])
@@ -107,7 +107,7 @@ def make_singles_sql(
         set_2_points=s2["home_points"] if s2 else None,
         set_3_points=s3["home_points"] if s3 else None,
         win=bool(singles_match["winner"] == 1),
-    )
+    ) if home_player else None
     singles_result.away_player_result = orm.result.AwayPlayerResult(
         player=away_player,
         singles_result=singles_result,
@@ -115,7 +115,7 @@ def make_singles_sql(
         set_2_points=s2["away_points"] if s2 else None,
         set_3_points=s3["away_points"] if s3 else None,
         win=bool(singles_match["winner"] != 1),
-    )
+    ) if away_player else None
     return singles_result
 
 
@@ -147,18 +147,21 @@ def make_doubles_result(doubles_match: dict[str, dict | int]) -> models.DoublesR
 
 
 def make_doubles_sql(
-    category: orm.result.ResultCategory,
+    category: common_data.ResultCategory,
     doubles_match: dict[str, dict | int],
     match_date: orm.MatchDate
 ) -> orm.result.DoublesResult:
-    home_pair = make_pair_sql(
-        make_player_sql(doubles_match["home_pair"]["first"]),
-        make_player_sql(doubles_match["home_pair"]["second"])
-    )
-    away_pair = make_pair_sql(
-        make_player_sql(doubles_match["away_pair"]["first"]),
-        make_player_sql(doubles_match["away_pair"]["second"])
-    )
+    home_pair, away_pair = None, None
+    if doubles_match["home_pair"]:
+        home_pair = make_pair_sql(
+            make_player_sql(doubles_match["home_pair"]["first"]),
+            make_player_sql(doubles_match["home_pair"]["second"])
+        )
+    if doubles_match["away_pair"]:
+        away_pair = make_pair_sql(
+            make_player_sql(doubles_match["away_pair"]["first"]),
+            make_player_sql(doubles_match["away_pair"]["second"])
+        )
     s1, s2, s3 = [doubles_match[f"set_{i}"] for i in [1, 2, 3]]
     doubles_result = orm.result.DoublesResult(
         match_date=match_date,
@@ -171,7 +174,7 @@ def make_doubles_sql(
         set_2_points=s2["home_points"] if s2 else None,
         set_3_points=s3["home_points"] if s3 else None,
         win=bool(doubles_match["winner"] == 1),
-    )
+    ) if home_pair else None
     doubles_result.away_pair_result = orm.result.AwayPairResult(
         doubles_pair=away_pair,
         doubles_result=doubles_result,
@@ -179,7 +182,7 @@ def make_doubles_sql(
         set_2_points=s2["away_points"] if s2 else None,
         set_3_points=s3["away_points"] if s3 else None,
         win=bool(doubles_match["winner"] != 1),
-    )
+    ) if away_pair else None
     return doubles_result
 
 
@@ -286,65 +289,68 @@ def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], allow_rescrape
             data = json.load(results_file)
 
         for result in data:
-            result_url = "/".join(result["url"].split("/")[-2:])
-            click.secho(f"found result for: {result_url}", fg="red")
-            matchdate = orm.MatchDate.one(url=result_url)
-            singles_results = [
-                make_singles_sql(
-                    orm.ResultCategory.HE1,
-                    result["mens_singles_1"],
-                    matchdate
-                ),
-                make_singles_sql(
-                    orm.ResultCategory.HE2,
-                    result["mens_singles_2"],
-                    matchdate
-                ),
-                make_singles_sql(
-                    orm.ResultCategory.HE3,
-                    result["mens_singles_3"],
-                    matchdate
-                ),
-                make_singles_sql(
-                    orm.ResultCategory.DD1,
-                    result["womens_singles"],
-                    matchdate
-                ),
-            ]
-            doubles_results = [
-                make_doubles_sql(orm.ResultCategory.HD1,
-                                 result["mens_doubles"], matchdate),
-                make_doubles_sql(orm.ResultCategory.DD1,
-                                 result["womens_doubles"], matchdate),
-                make_doubles_sql(orm.ResultCategory.MX1,
-                                 result["mixed_doubles"], matchdate),
-            ]
-            if (winner := result["winner"]) is not None:
-                winner = orm.result.WinningTeam.HOME if winner is marespider.Side.HOME else orm.result.WinningTeam.AWAY
-            home_wins = sum(
-                bool(s.home_player_result.win) for s in singles_results
-            ) + sum(bool(d.home_pair_result.win) for d in doubles_results)
-            away_wins = sum(
-                bool(s.away_player_result.win) for s in singles_results
-            ) + sum(bool(d.away_pair_result.win) for d in doubles_results)
-            matchresult = orm.MatchResult(
-                match_date=matchdate,
-                winner=winner,
-                walkover=False,
-                home_points=home_wins // 2,
-                away_points=away_wins // 2)
-            if existing := orm.MatchResult.one_or_none(match_date=matchdate):
-                existing.winner = matchresult.winner
-                matchresult = existing
-            session.add_all(singles_results)
-            session.add_all(doubles_results)
-            session.add(matchresult)
-            session.commit()
+            try:
+                result_url = "/".join(result["url"].split("/")[-2:])
+                click.secho(f"found result for: {result_url}", fg="red")
+                matchdate = orm.MatchDate.one(url=result_url)
+                singles_results = [
+                    make_singles_sql(
+                        common_data.ResultCategory.HE1,
+                        result["mens_singles_1"],
+                        matchdate
+                    ),
+                    make_singles_sql(
+                        common_data.ResultCategory.HE2,
+                        result["mens_singles_2"],
+                        matchdate
+                    ),
+                    make_singles_sql(
+                        common_data.ResultCategory.HE3,
+                        result["mens_singles_3"],
+                        matchdate
+                    ),
+                    make_singles_sql(
+                        common_data.ResultCategory.DD1,
+                        result["womens_singles"],
+                        matchdate
+                    ),
+                ]
+                doubles_results = [i for i in [
+                    make_doubles_sql(common_data.ResultCategory.HD1,
+                                     result["mens_doubles"], matchdate),
+                    make_doubles_sql(common_data.ResultCategory.DD1,
+                                     result["womens_doubles"], matchdate),
+                    make_doubles_sql(common_data.ResultCategory.MX1,
+                                     result["mixed_doubles"], matchdate),
+                ] if i is not None]
+                if (winner := result["winner"]) is not None:
+                    winner = orm.result.WinningTeam.HOME if winner is marespider.Side.HOME else orm.result.WinningTeam.AWAY
+                home_wins = sum(
+                    bool(s.home_player_result.win) for s in singles_results
+                ) + sum(bool(d.home_pair_result.win) for d in doubles_results)
+                away_wins = sum(
+                    bool(s.away_player_result.win) for s in singles_results
+                ) + sum(bool(d.away_pair_result.win) for d in doubles_results)
+                matchresult = orm.MatchResult(
+                    match_date=matchdate,
+                    winner=winner,
+                    walkover=False,
+                    home_points=home_wins // 2,
+                    away_points=away_wins // 2)
+                if existing := orm.MatchResult.one_or_none(match_date=matchdate):
+                    existing.winner = matchresult.winner
+                    matchresult = existing
+                session.add_all(singles_results)
+                session.add_all(doubles_results)
+                session.add(matchresult)
+                session.commit()
+            except:
+                ...
 
 
-@results.command("show")
-@click.argument("match", type=param_types.match.Match())
-@click.pass_context
+@ results.command("show")
+@ click.argument("match", type=param_types.match.Match())
+@ click.pass_context
 def show(ctx: click.Context, match: models.MatchDate) -> None:
     result = models.MatchResult.find_one({"match_date": match})
     if not result:
@@ -353,9 +359,9 @@ def show(ctx: click.Context, match: models.MatchDate) -> None:
     click.echo(result.render())
 
 
-@results.command("show-sqlite")
-@click.argument("match", type=param_types.match.Match())
-@click.pass_context
+@ results.command("show-sqlite")
+@ click.argument("match", type=param_types.match.Match())
+@ click.pass_context
 def show_sqlite(ctx: click.Context, match: orm.MatchDate) -> None:
     result = orm.MatchResult.one(match_date=match)
     if not result:

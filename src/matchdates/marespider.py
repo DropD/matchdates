@@ -7,117 +7,13 @@ from typing import Iterator, Optional
 import scrapy
 
 from . import settings
+from matchdates.common_data import (
+    DoublesPair, DoublesResult, Player, Set, Side, SinglesResult,
+    TeamMatchResult, ResultCategory
+)
 
 
 SETTINGS = settings.SETTINGS["crawling"]
-
-
-class Side(enum.StrEnum):
-    HOME = enum.auto()
-    AWAY = enum.auto()
-
-
-@dataclasses.dataclass
-class Player:
-    name: str
-    url: str
-
-
-@dataclasses.dataclass
-class Set:
-    home_points: int
-    away_points: int
-    retired: Optional[Side] = None
-
-    # def __post_init__(self):
-    #     winning_score = max([self.home_points, self.away_points])
-    #     losing_score = min([self.home_points, self.away_points])
-    #     difference = winning_score - losing_score
-    #     if winning_score > 30:
-    #         raise ValueError("A set of Badminton can not go to more than 30 points!")
-    #     elif winning_score > 21 and difference > 2:
-    #         raise ValueError(f"{self.home_points} : {self.away_points} is not a valid score!")
-    #     elif 30 > winning_score > 21 and difference < 2:
-    #         raise ValueError(f"{self.home_points} : {self.away_points} is not a valid score!")
-    #     elif winning_score < 21 and not self.retired:
-    #         raise ValueError(f"{self.home_points} : {self.away_points} is not a valid score if neither player retired.")
-
-    @property
-    def winner(self) -> Side:
-        match self.retired:
-            case Side.HOME:
-                return Side.AWAY
-            case Side.AWAY:
-                return Side.HOME
-            case _:
-                ...
-
-        if self.home_points > self.away_points:
-            return Side.HOME
-        else:
-            return Side.AWAY
-
-    def __str__(self) -> str:
-        match self.retired:
-            case Side.HOME:
-                return f"{self.home_points} (ret.) : {self.away_points}"
-            case Side.AWAY:
-                return f"{self.home_points} : {self.away_points} (ret.)"
-            case _:
-                return f"{self.home_points} : {self.away_points}"
-
-
-@dataclasses.dataclass
-class DoublesPair:
-    first: Player
-    second: Player
-
-    def __iter__(self):
-        yield self.first
-        yield self.second
-
-
-@dataclasses.dataclass
-class SinglesResult:
-    home_player: Player
-    away_player: Player
-    set_1: Set
-    set_2: Optional[Set]
-    set_3: Optional[Set]
-    winner: Side
-
-
-@dataclasses.dataclass
-class DoublesResult:
-    home_pair: DoublesPair
-    away_pair: DoublesPair
-    set_1: Set
-    set_2: Optional[Set]
-    set_3: Optional[Set]
-    winner: Side
-
-
-@dataclasses.dataclass
-class TeamMatchResult:
-    mens_singles_1: SinglesResult
-    mens_singles_2: SinglesResult
-    mens_singles_3: SinglesResult
-    mens_doubles: DoublesResult
-    womens_singles: SinglesResult
-    womens_doubles: DoublesResult
-    mixed_doubles: DoublesResult
-    winner: Side
-    url: str
-
-
-@dataclasses.dataclass
-class SeniorMatchResult:
-    mens_doubles: DoublesResult
-    womens_doubles: DoublesResult
-    mixed_doubles_1: DoublesResult
-    mixed_doubles_2: DoublesResult
-    winner: Side | None
-    url: str
 
 
 class MatchResultSpider(scrapy.Spider):
@@ -127,17 +23,19 @@ class MatchResultSpider(scrapy.Spider):
     cookies = SETTINGS["cookies"]
     # cookies = None
     inspect_counter = 0
-    event_name_map = {
-        "HE1": "mens_singles_1",
-        "HE2": "mens_singles_2",
-        "HE3": "mens_singles_3",
-        "HD1": "mens_doubles",
-        "Men's Doubles1": "mens_doubles",
-        "DE1": "womens_singles",
-        "DD1": "womens_doubles",
-        "Women's Doubles1": "womens_doubles",
-        "GD1": "mixed_doubles",
-        "GD2": "mixed_doubles_2",
+    event_cat_map = {
+        "HE1": ResultCategory.HE1,
+        "HE2": ResultCategory.HE2,
+        "HE3": ResultCategory.HE3,
+        "HD1": ResultCategory.HD1,
+        "HD2": ResultCategory.HD2,
+        "Men's Doubles1": ResultCategory.HD1,
+        "Men's Doubles2": ResultCategory.HD2,
+        "DE1": ResultCategory.DE1,
+        "DD1": ResultCategory.DD1,
+        "Women's Doubles1": ResultCategory.DD1,
+        "GD1": ResultCategory.MX1,
+        "GD2": ResultCategory.MX2,
     }
 
     def __init__(self, matchnrs: Optional[list[int]] = None, urls: Optional[list[str]] = None):
@@ -161,34 +59,29 @@ class MatchResultSpider(scrapy.Spider):
 
         event_results = {self.event_name(
             event): self.event_details(event) for event in events}
-        results = {
+        singles = {
             k: self.details_to_singles_res(v)
             for k, v in event_results.items()
-            if re.match(r".*singles.*", k)
-        } | {
+            if k in ResultCategory.singles_categories
+        }
+        doubles = {
             k: self.details_to_doubles_res(v)
             for k, v in event_results.items()
-            if re.match(r".*doubles.*", k)
+            if k in ResultCategory.doubles_categories
         }
 
-        wins = collections.Counter(r.winner for r in results.values())
+        wins = collections.Counter(
+            r.winner for r in (singles | doubles).values())
         url = response.url.replace(
             f"https://www.{self.allowed_domains[0]}", "")
 
-        print(url)
-
-        if len(results) == 4:
-            results["mixed_doubles_1"] = results.pop("mixed_doubles")
-            winner = Side.HOME if wins[Side.HOME] > 2 else None
-            winner = Side.AWAY if wins[Side.AWAY] > 2 else None
-            return SeniorMatchResult(
-                **results,
-                winner=winner,
-                url=url
-            )
-        return TeamMatchResult(
-            **results,
-            winner=max(wins, key=lambda s: wins[s]),
+        winner = Side.NEITHER
+        if not wins[Side.HOME] == wins[Side.AWAY]:
+            winner = max(wins, key=lambda s: wins[s])
+        yield TeamMatchResult(
+            singles=singles,
+            doubles=doubles,
+            winner=winner,
             url=url,
         )
 
@@ -236,13 +129,24 @@ class MatchResultSpider(scrapy.Spider):
             rows[1].css(".match__row-title-value-content")))
         sets = list(self.match_sets(event.css(".match__result > .points")))
 
-        winner = None
+        winner = Side.NEITHER
         if "has-won" in rows[0].xpath("attribute::class").get().split(" "):
             winner = Side.HOME
         elif "has-won" in rows[1].xpath("attribute::class").get().split(" "):
             winner = Side.AWAY
-        assert winner
 
+        retired = Side.NEITHER
+        if "Retired" in rows[0].xpath("*//text()").get():
+            retired = Side.HOME
+        elif "Retired" in rows[1].xpath("*//text()").get():
+            retired = Side.AWAY
+
+        assert any([
+            len(home_players) > 0,
+            len(away_players) > 0,
+            len(sets) > 0,
+            winner
+        ])
         # winning_players = list(self.match_players(data.css(".math__row .has-won > .match__row-title-value-content")))
 
         return {
@@ -250,6 +154,7 @@ class MatchResultSpider(scrapy.Spider):
             "away_players": away_players,
             "sets": sets,
             "winner": winner,
+            "retired": retired,
         }
 
     def match_sets(self, sets: list[scrapy.Selector]) -> Iterator[Set]:
@@ -265,7 +170,7 @@ class MatchResultSpider(scrapy.Spider):
                 url=player.css("a::attr('href')").get(),
             )
 
-    def event_name(self, event: scrapy.Selector) -> str:
+    def event_name(self, event: scrapy.Selector) -> ResultCategory:
         raw_event_name = event.css(
             ".match__header-title-item").xpath("*//text()").get().strip()
-        return self.event_name_map[raw_event_name]
+        return self.event_cat_map[raw_event_name]

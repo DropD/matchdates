@@ -6,18 +6,22 @@ from typing import Iterator
 import pytest
 from scrapy import crawler
 
-from matchdates import marespider
+from matchdates import common_data, marespider
 
 
 @dataclasses.dataclass(kw_only=True)
 class Example:
     filename: str
-    winners: dict[str, str]
-    team_points: dict[str, int]
-    team_retired: str | None = None
-    players_retired: dict[str, str] = dataclasses.field(default_factory=dict)
-    walkovers: dict[str, str] = dataclasses.field(default_factory=dict)
-    winner: str | None
+    winners: dict[common_data.ResultCategory, common_data.Side]
+    team_points: dict[common_data.Side, int]
+    team_retired: common_data.Side = common_data.Side.NEITHER
+    players_retired: dict[
+        common_data.ResultCategory, common_data.Side
+    ] = dataclasses.field(default_factory=dict)
+    walkovers: dict[
+        common_data.ResultCategory, common_data.Side
+    ] = dataclasses.field(default_factory=dict)
+    winner: common_data.Side
 
     @property
     def url(self) -> str:
@@ -35,19 +39,19 @@ def adjusted() -> Iterator[Example]:
     yield Example(
         filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7162.html",
         winners={
-            "he1": "away",
-            "he2": "away",
-            "he3": "away",
-            "de1": "away",
-            "hd1": "away",
-            "dd1": "away",
-            "xd1": "home"
+            common_data.ResultCategory.HE1: common_data.Side.AWAY,
+            common_data.ResultCategory.HE2: common_data.Side.AWAY,
+            common_data.ResultCategory.HE3: common_data.Side.AWAY,
+            common_data.ResultCategory.DE1: common_data.Side.AWAY,
+            common_data.ResultCategory.HD1: common_data.Side.AWAY,
+            common_data.ResultCategory.DD1: common_data.Side.AWAY,
+            common_data.ResultCategory.MX1: common_data.Side.HOME
         },
         team_points={
-            "home": 0,
-            "away": 3
+            common_data.Side.HOME: 0,
+            common_data.Side.AWAY: 3
         },
-        winner="away"
+        winner=common_data.Side.AWAY
     )
 
 
@@ -56,20 +60,20 @@ def team_retired() -> Iterator[Example]:
     yield Example(
         filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_6006.html",
         winners={
-            "he1": "home",
-            "he2": "home",
-            "he3": "away",
-            "de1": "home",
-            "hd1": "home",
-            "dd1": "away",
-            "xd1": "away"
+            common_data.ResultCategory.HE1: common_data.Side.HOME,
+            common_data.ResultCategory.HE2: common_data.Side.HOME,
+            common_data.ResultCategory.HE3: common_data.Side.AWAY,
+            common_data.ResultCategory.DE1: common_data.Side.HOME,
+            common_data.ResultCategory.HD1: common_data.Side.HOME,
+            common_data.ResultCategory.DD1: common_data.Side.AWAY,
+            common_data.ResultCategory.MX1: common_data.Side.AWAY
         },
         team_points={
-            "home": 0,
-            "away": 0
+            common_data.Side.HOME: 0,
+            common_data.Side.AWAY: 0
         },
-        team_retired="home",
-        winner="home"
+        team_retired=common_data.Side.HOME,
+        winner=common_data.Side.HOME
     )
 
 
@@ -78,19 +82,19 @@ def standard_ul() -> Iterator[Example]:
     yield Example(
         filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7467.html",
         winners={
-            "he1": "away",
-            "he2": "away",
-            "he3": "away",
-            "de1": "away",
-            "hd1": "away",
-            "dd1": "home",
-            "xd1": "away"
+            common_data.ResultCategory.HE1: common_data.Side.AWAY,
+            common_data.ResultCategory.HE2: common_data.Side.AWAY,
+            common_data.ResultCategory.HE3: common_data.Side.AWAY,
+            common_data.ResultCategory.DE1: common_data.Side.AWAY,
+            common_data.ResultCategory.HD1: common_data.Side.AWAY,
+            common_data.ResultCategory.DD1: common_data.Side.HOME,
+            common_data.ResultCategory.MX1: common_data.Side.AWAY
         },
         team_points={
-            "home": 0,
-            "away": 3
+            common_data.Side.HOME: 0,
+            common_data.Side.AWAY: 3
         },
-        winner="away"
+        winner=common_data.Side.AWAY
     )
 
 
@@ -99,16 +103,16 @@ def standard_sl() -> Iterator[Example]:
     yield Example(
         filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_8919.html",
         winners={
-            "dd1": "home",
-            "hd1": "away",
-            "xd1": "away",
-            "xd2": "home"
+            common_data.ResultCategory.DD1: common_data.Side.HOME,
+            common_data.ResultCategory.HD1: common_data.Side.AWAY,
+            common_data.ResultCategory.MX1: common_data.Side.AWAY,
+            common_data.ResultCategory.MX2: common_data.Side.HOME
         },
         team_points={
-            "home": 2,
-            "away": 2
+            common_data.Side.HOME: 2,
+            common_data.Side.AWAY: 2
         },
-        winner=None
+        winner=common_data.Side.NEITHER
     )
 
 
@@ -117,23 +121,23 @@ def walkover_player() -> Iterator[Example]:
     yield Example(
         filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7455.html",
         winners={
-            "he1": "away",
-            "he2": "home",
-            "he3": "home",
-            "de1": "away",
-            "hd1": "home",
-            "dd1": "away",
-            "xd1": "home"
+            common_data.ResultCategory.HE1: common_data.Side.AWAY,
+            common_data.ResultCategory.HE2: common_data.Side.HOME,
+            common_data.ResultCategory.HE3: common_data.Side.HOME,
+            common_data.ResultCategory.DE1: common_data.Side.AWAY,
+            common_data.ResultCategory.HD1: common_data.Side.HOME,
+            common_data.ResultCategory.DD1: common_data.Side.AWAY,
+            common_data.ResultCategory.MX1: common_data.Side.HOME
         },
         team_points={
-            "home": 2,
-            "away": 1
+            common_data.Side.HOME: 2,
+            common_data.Side.AWAY: 1
         },
         walkovers={
-            "he3": "away",
-            "hd1": "away"
+            common_data.ResultCategory.HE3: common_data.Side.AWAY,
+            common_data.ResultCategory.HD1: common_data.Side.AWAY
         },
-        winner="home"
+        winner=common_data.Side.HOME
     )
 
 
@@ -142,22 +146,22 @@ def retired_player() -> Iterator[Example]:
     yield Example(
         filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7033.html",
         winners={
-            "he1": "home",
-            "he2": "home",
-            "he3": "home",
-            "de1": "home",
-            "hd1": "home",
-            "dd1": "home",
-            "xd1": "home"
+            common_data.ResultCategory.HE1: common_data.Side.HOME,
+            common_data.ResultCategory.HE2: common_data.Side.HOME,
+            common_data.ResultCategory.HE3: common_data.Side.HOME,
+            common_data.ResultCategory.DE1: common_data.Side.HOME,
+            common_data.ResultCategory.HD1: common_data.Side.HOME,
+            common_data.ResultCategory.DD1: common_data.Side.HOME,
+            common_data.ResultCategory.MX1: common_data.Side.HOME
         },
         team_points={
-            "home": 3,
-            "away": 0
+            common_data.Side.HOME: 3,
+            common_data.Side.AWAY: 0
         },
         players_retired={
-            "xd1": "away"
+            common_data.ResultCategory.MX1: common_data.Side.AWAY
         },
-        winner="home"
+        winner=common_data.Side.HOME
     )
 
 

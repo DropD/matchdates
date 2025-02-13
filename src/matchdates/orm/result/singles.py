@@ -4,10 +4,11 @@ import sqlalchemy as sqla
 from sqlalchemy.orm import Mapped
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
+from matchdates import common_data
 from matchdates.orm import base, errors
 from matchdates.orm.player import Player
 from matchdates.orm.matchdate import MatchDate
-from .common import ResultCategory, PlayerResultBase
+from .common import PlayerResultBase
 
 
 class SinglesResult(base.IDMixin, base.Base):
@@ -20,7 +21,7 @@ class SinglesResult(base.IDMixin, base.Base):
         back_populates="singles_results"
     )
 
-    category: Mapped[ResultCategory]
+    category: Mapped[common_data.ResultCategory]
 
     home_player_result: Mapped[HomePlayerResult] = sqla.orm.relationship(
         back_populates="singles_result", cascade="all, delete-orphan", repr=False,

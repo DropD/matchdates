@@ -1,4 +1,4 @@
-from matchdates import orm
+from matchdates import orm, common_data
 
 
 def test_create_doubles_result(
@@ -11,7 +11,7 @@ def test_create_doubles_result(
 
     testee = orm.result.DoublesResult(
         match_date=matchdate,
-        category=orm.result.ResultCategory.HD1,
+        category=common_data.ResultCategory.HD1,
     )
     home_pair_result = orm.result.HomePairResult(
         doubles_pair=home_pair,
@@ -32,7 +32,7 @@ def test_create_doubles_result(
     db_session.add_all([testee, home_pair_result, away_pair_result])
     db_session.commit()
 
-    assert testee.category is orm.result.ResultCategory.HD1
+    assert testee.category is common_data.ResultCategory.HD1
     assert testee.home_pair == home_pair
     assert testee.away_pair == away_pair
     assert testee in matchdate.doubles_results

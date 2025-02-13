@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped
 
 from matchdates.orm import base
 from matchdates.orm.matchdate import MatchDate
-from .common import ResultCategory
+from matchdates import common_data
 
 
 class WinningTeam(enum.Enum):
@@ -17,15 +17,17 @@ class WinningTeam(enum.Enum):
     AWAY = "away"
 
 
-def cat_order() -> list[ResultCategory]:
+def cat_order() -> list[common_data.ResultCategory]:
     return [
-        ResultCategory.HE1,
-        ResultCategory.HE2,
-        ResultCategory.HE3,
-        ResultCategory.DE1,
-        ResultCategory.HD1,
-        ResultCategory.DD1,
-        ResultCategory.MX1
+        common_data.ResultCategory.HE1,
+        common_data.ResultCategory.HE2,
+        common_data.ResultCategory.HE3,
+        common_data.ResultCategory.DE1,
+        common_data.ResultCategory.HD1,
+        common_data.ResultCategory.HD2,
+        common_data.ResultCategory.DD1,
+        common_data.ResultCategory.MX1,
+        common_data.ResultCategory.MX2
     ]
 
 

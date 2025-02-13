@@ -1,4 +1,4 @@
-from matchdates import orm
+from matchdates import common_data, orm
 
 
 def test_create_singles_result(db_session, matchdate, team1, team2, anas, kodai):
@@ -8,7 +8,7 @@ def test_create_singles_result(db_session, matchdate, team1, team2, anas, kodai)
 
     testee = orm.result.SinglesResult(
         match_date=matchdate,
-        category=orm.result.ResultCategory.HE1,
+        category=common_data.ResultCategory.HE1,
     )
     db_session.add(testee)
     db_session.commit()
@@ -30,7 +30,7 @@ def test_create_singles_result(db_session, matchdate, team1, team2, anas, kodai)
     db_session.add(away_player_result)
     db_session.commit()
 
-    assert testee.category is orm.result.ResultCategory.HE1
+    assert testee.category is common_data.ResultCategory.HE1
     assert testee.home_player == anas
     assert testee.away_player == kodai
     assert matchdate.home_team in testee.home_player.teams

@@ -21,6 +21,9 @@ pytest = "^8.3.3"
 alembic = "^1.13.3"
 pre-commit = "^4.0.1"
 thefuzz = "^0.22.1"
+pydantic = "^2.10.6"
+attrs = "^25.1.0"
+cattrs = "^24.1.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"

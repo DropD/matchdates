@@ -1,7 +1,7 @@
 import pendulum
 import pytest
 
-from matchdates import orm
+from matchdates import orm, common_data
 from matchdates.orm.base import Base
 
 
@@ -92,7 +92,7 @@ def yuta(team2):
 def singles_result(matchdate, anas, kodai):
     singlesresult = orm.result.SinglesResult(
         match_date=matchdate,
-        category=orm.result.ResultCategory.HE1,
+        category=common_data.ResultCategory.HE1,
     )
     home_player_result = orm.result.HomePlayerResult(
         player=anas,
@@ -115,7 +115,7 @@ def singles_result(matchdate, anas, kodai):
 def doubles_result(matchdate, anas, kodai, victor, yuta):
     doublesresult = orm.result.DoublesResult(
         match_date=matchdate,
-        category=orm.result.ResultCategory.HD1,
+        category=common_data.ResultCategory.HD1,
     )
     home_pair = orm.player.DoublesPair(players={anas, victor})
     away_pair = orm.player.DoublesPair(players={kodai, yuta})
@@ -156,15 +156,15 @@ def match_result(matchdate, singles_result, doubles_result, anas, kodai, victor,
     akane_arisa = orm.player.DoublesPair(players={akane, arisa})
 
     he2 = orm.result.SinglesResult(
-        match_date=matchdate, category=orm.result.ResultCategory.HE2)
+        match_date=matchdate, category=common_data.ResultCategory.HE2)
     he3 = orm.result.SinglesResult(
-        match_date=matchdate, category=orm.result.ResultCategory.HE3)
+        match_date=matchdate, category=common_data.ResultCategory.HE3)
     de1 = orm.result.SinglesResult(
-        match_date=matchdate, category=orm.result.ResultCategory.DE1)
+        match_date=matchdate, category=common_data.ResultCategory.DE1)
     dd1 = orm.result.DoublesResult(
-        match_date=matchdate, category=orm.result.ResultCategory.DD1)
+        match_date=matchdate, category=common_data.ResultCategory.DD1)
     xd1 = orm.result.DoublesResult(
-        match_date=matchdate, category=orm.result.ResultCategory.MX1)
+        match_date=matchdate, category=common_data.ResultCategory.MX1)
 
     he2_h = orm.result.HomePlayerResult(
         player=victor,

@@ -1,19 +1,7 @@
 from __future__ import annotations
 
-import enum
-
 import sqlalchemy as sqla
 from sqlalchemy.orm import Mapped
-
-
-class ResultCategory(enum.Enum):
-    HE1 = "he1"
-    HE2 = "he2"
-    HE3 = "he3"
-    DE1 = "de1"
-    HD1 = "hd1"
-    DD1 = "dd1"
-    MX1 = "mx1"
 
 
 class PlayerResultBase(sqla.orm.MappedAsDataclass):
