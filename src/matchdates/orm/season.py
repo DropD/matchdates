@@ -58,3 +58,6 @@ class Season(base.IDMixin, base.Base):
     # @property
     # def clubs(self):
     #     return [entry.club for entry in self.club_entries]
+
+    def __str__(self) -> str:
+        return self.url

@@ -1,13 +1,19 @@
-import json
-import tempfile
-from typing import Optional
+from __future__ import annotations
 
+import json
+import pathlib
+import tempfile
+from typing import Callable, Optional
+
+import cattrs
 import click
+import click_spinner
 import pendulum
 from scrapy import crawler
 
-from matchdates import common_data, date_utils, models, marespider, orm
+from matchdates import common_data, date_utils, models, marespider, orm, settings
 from .main import main
+from .reload import latest_datafile, datafiles_outdated
 from . import param_types
 
 
@@ -28,17 +34,17 @@ def make_player(player_dict: Optional[dict[str, str]]) -> Optional[models.Player
     return None
 
 
-def make_player_sql(player_dict: Optional[dict[str, str]]) -> Optional[orm.Player]:
-    if player_dict:
+def make_player_sql(player: Optional[common_data.Player]) -> Optional[orm.Player]:
+    if player:
         session = orm.db.get_session()
-        url = "/".join(player_dict["url"].rsplit("/", 2)[1:])
+        url = "/".join(player.url.rsplit("/", 2)[1:])
         if existing := orm.Player.one_or_none(url=url):
             session.add(existing)
             return existing
         else:
             player = orm.Player(
-                name=player_dict["name"],
-                url="/".join(player_dict["url"].rsplit("/", 2)[1:])
+                name=player.name,
+                url=url
             )
             session.add(player)
             session.commit()
@@ -91,31 +97,34 @@ def make_singles_result(singles_match: dict[str, dict | int]) -> models.SinglesR
 
 
 def make_singles_sql(
-    category: common_data.ResultCategory, singles_match: dict[str, dict | int], match_date: orm.MatchDate
+    category: common_data.ResultCategory, singles_match: common_data.SinglesResult, match_date: orm.MatchDate
 ) -> models.SinglesResult:
-    home_player = make_player_sql(singles_match["home_player"])
-    away_player = make_player_sql(singles_match["away_player"])
-    s1, s2, s3 = singles_match["set_1"], singles_match["set_2"], singles_match["set_3"]
+    home_player = make_player_sql(singles_match.home_player)
+    away_player = make_player_sql(singles_match.away_player)
+    s1, s2, s3 = singles_match.set_1, singles_match.set_2, singles_match.set_3
     singles_result = orm.SinglesResult(
         match_date=match_date,
         category=category
     )
-    singles_result.home_player_result = orm.result.HomePlayerResult(
-        player=home_player,
-        singles_result=singles_result,
-        set_1_points=s1["home_points"] if s1 else None,
-        set_2_points=s2["home_points"] if s2 else None,
-        set_3_points=s3["home_points"] if s3 else None,
-        win=bool(singles_match["winner"] == 1),
-    ) if home_player else None
-    singles_result.away_player_result = orm.result.AwayPlayerResult(
-        player=away_player,
-        singles_result=singles_result,
-        set_1_points=s1["away_points"] if s1 else None,
-        set_2_points=s2["away_points"] if s2 else None,
-        set_3_points=s3["away_points"] if s3 else None,
-        win=bool(singles_match["winner"] != 1),
-    ) if away_player else None
+    if not home_player or not away_player:
+        singles_result.walkover_winner = singles_match.winner
+    else:
+        singles_result.home_player_result = orm.result.HomePlayerResult(
+            player=home_player,
+            singles_result=singles_result,
+            set_1_points=s1.home_points if s1 else None,
+            set_2_points=s2.home_points if s2 else None,
+            set_3_points=s3.home_points if s3 else None,
+            win=bool(singles_match.winner == common_data.Side.HOME),
+        )
+        singles_result.away_player_result = orm.result.AwayPlayerResult(
+            player=away_player,
+            singles_result=singles_result,
+            set_1_points=s1.away_points if s1 else None,
+            set_2_points=s2.away_points if s2 else None,
+            set_3_points=s3.away_points if s3 else None,
+            win=bool(singles_match.winner == common_data.Side.AWAY),
+        )
     return singles_result
 
 
@@ -148,21 +157,23 @@ def make_doubles_result(doubles_match: dict[str, dict | int]) -> models.DoublesR
 
 def make_doubles_sql(
     category: common_data.ResultCategory,
-    doubles_match: dict[str, dict | int],
+    doubles_match: common_data.DoublesResult,
     match_date: orm.MatchDate
 ) -> orm.result.DoublesResult:
     home_pair, away_pair = None, None
-    if doubles_match["home_pair"]:
+    if doubles_match.home_pair:
         home_pair = make_pair_sql(
-            make_player_sql(doubles_match["home_pair"]["first"]),
-            make_player_sql(doubles_match["home_pair"]["second"])
+            make_player_sql(doubles_match.home_pair.first),
+            make_player_sql(doubles_match.home_pair.second)
         )
-    if doubles_match["away_pair"]:
+    if doubles_match.away_pair:
         away_pair = make_pair_sql(
-            make_player_sql(doubles_match["away_pair"]["first"]),
-            make_player_sql(doubles_match["away_pair"]["second"])
+            make_player_sql(doubles_match.away_pair.first),
+            make_player_sql(doubles_match.away_pair.second)
         )
-    s1, s2, s3 = [doubles_match[f"set_{i}"] for i in [1, 2, 3]]
+    s1 = doubles_match.set_1
+    s2 = doubles_match.set_2
+    s3 = doubles_match.set_3
     doubles_result = orm.result.DoublesResult(
         match_date=match_date,
         category=category
@@ -170,26 +181,47 @@ def make_doubles_sql(
     doubles_result.home_pair_result = orm.result.HomePairResult(
         doubles_pair=home_pair,
         doubles_result=doubles_result,
-        set_1_points=s1["home_points"] if s1 else None,
-        set_2_points=s2["home_points"] if s2 else None,
-        set_3_points=s3["home_points"] if s3 else None,
-        win=bool(doubles_match["winner"] == 1),
+        set_1_points=s1.home_points if s1 else None,
+        set_2_points=s2.home_points if s2 else None,
+        set_3_points=s3.home_points if s3 else None,
+        win=bool(doubles_match.winner == common_data.Side.HOME),
     ) if home_pair else None
     doubles_result.away_pair_result = orm.result.AwayPairResult(
         doubles_pair=away_pair,
         doubles_result=doubles_result,
-        set_1_points=s1["away_points"] if s1 else None,
-        set_2_points=s2["away_points"] if s2 else None,
-        set_3_points=s3["away_points"] if s3 else None,
-        win=bool(doubles_match["winner"] != 1),
+        set_1_points=s1.away_points if s1 else None,
+        set_2_points=s2.away_points if s2 else None,
+        set_3_points=s3.away_points if s3 else None,
+        win=bool(doubles_match.winner == common_data.Side.AWAY),
     ) if away_pair else None
     return doubles_result
 
 
-@results.command("load")
-@click.option("-M", "--match", "matches", type=param_types.match.Match(), multiple=True)
-@click.option("--allow-rescrape/--no-allow-rescrape", default=False)
-@click.pass_context
+def recrawl(matches: list[orm.MatchDate]) -> pathlib.Path:
+    click.echo("recrawling data")
+    matchnrs = [m.matchnr for m in matches]
+    click.secho(f"scraping matches: {matchnrs}", fg="red")
+    new_datafile = (
+        settings.get_crawl_datadir(settings.SETTINGS)
+        / f"matchresults-{pendulum.now().int_timestamp}.json"
+    )
+    process = crawler.CrawlerProcess(
+        settings={
+            "FEEDS": {str(new_datafile): {"format": "json"}},
+            "LOG_LEVEL": "ERROR",
+        }
+    )
+    process.crawl(marespider.MatchResultSpider,
+                  urls=[m.full_url for m in matches])
+    with click_spinner.spinner():
+        process.start()
+    return new_datafile
+
+
+@ results.command("load")
+@ click.option("-M", "--match", "matches", type=param_types.match.Match(), multiple=True)
+@ click.option("--allow-rescrape/--no-allow-rescrape", default=False)
+@ click.pass_context
 def load(ctx: click.Context, matches: list[models.MatchDate], allow_rescrape: bool) -> None:
     if not matches:
         today = pendulum.today()
@@ -248,104 +280,86 @@ def load(ctx: click.Context, matches: list[models.MatchDate], allow_rescrape: bo
                 matchresult.commit()
 
 
-@results.command("load-sqlite")
-@click.option("-M", "--match", "matches", type=param_types.match.Match(), multiple=True)
-@click.option("--allow-rescrape/--no-allow-rescrape", default=False)
-@click.pass_context
-def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], allow_rescrape: bool) -> None:
+@ results.command("load-sqlite")
+@ click.option("-M", "--match", "matches", type=param_types.match.Match(), multiple=True)
+@ click.option("--all", is_flag=True, default=False)
+@ click.option("--allow-rescrape/--no-allow-rescrape", default=False)
+@ click.pass_context
+def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], all: bool, allow_rescrape: bool) -> None:
     with orm.db.get_session() as session:
         if not matches:
-            today = pendulum.today()
-            last_season_start = date_utils.season_start(today)
-            matches = list(
-                session.scalars(
-                    orm.MatchDate.select().filter(
-                        (orm.MatchDate.date_time
-                         < date_utils.date_to_datetime(today)) | (orm.MatchDate.date_time
-                                                                  > last_season_start)
-                    )
-                ).all()
-            )
-        known_results = list(orm.MatchResult.all())
-        known_matchnrs = set(r.match_date.matchnr for r in known_results)
-        requested_matchnrs = set(m.matchnr for m in matches)
-        matchnrs = requested_matchnrs
-        if not allow_rescrape:
-            matchnrs = requested_matchnrs - known_matchnrs
-        if not matchnrs:
-            click.echo("Nothing to do.")
-            ctx.exit()
-        data = {}
-        click.secho(f"scraping matches: {matchnrs}", fg="red")
-        with tempfile.NamedTemporaryFile() as results_file:
-            process = crawler.CrawlerProcess(
-                settings={
-                    "FEEDS": {results_file.name: {"format": "json"}},
-                    "LOG_LEVEL": "INFO",
-                }
-            )
-            process.crawl(marespider.MatchResultSpider, matchnrs=matchnrs)
-            process.start()
-            data = json.load(results_file)
+            if all:
+                matches = orm.MatchDate.all()
+            else:
+                today = pendulum.today()
+                last_season_start = date_utils.season_start(today)
+                matches = list(
+                    session.scalars(
+                        orm.MatchDate.select().filter(
+                            (orm.MatchDate.date_time
+                             < date_utils.date_to_datetime(today))  # & (orm.MatchDate.date_time
+                            # > last_season_start)
+                        )
+                    ).all()
+                )
+        datadir = settings.get_crawl_datadir(settings.SETTINGS)
+        datafiles = [
+            i for i in datadir.iterdir() if i.name.startswith("matchresults")
+        ]
+        current_datafile = latest_datafile(datafiles)
+        if datafiles_outdated(datafiles) and allow_rescrape:
+            current_datafile = recrawl(matches)
+        else:
+            click.echo("using existing data.")
+        data = json.loads(current_datafile.read_text())
 
-        for result in data:
-            try:
-                result_url = "/".join(result["url"].split("/")[-2:])
-                click.secho(f"found result for: {result_url}", fg="red")
-                matchdate = orm.MatchDate.one(url=result_url)
-                singles_results = [
-                    make_singles_sql(
-                        common_data.ResultCategory.HE1,
-                        result["mens_singles_1"],
-                        matchdate
-                    ),
-                    make_singles_sql(
-                        common_data.ResultCategory.HE2,
-                        result["mens_singles_2"],
-                        matchdate
-                    ),
-                    make_singles_sql(
-                        common_data.ResultCategory.HE3,
-                        result["mens_singles_3"],
-                        matchdate
-                    ),
-                    make_singles_sql(
-                        common_data.ResultCategory.DD1,
-                        result["womens_singles"],
-                        matchdate
-                    ),
-                ]
-                doubles_results = [i for i in [
-                    make_doubles_sql(common_data.ResultCategory.HD1,
-                                     result["mens_doubles"], matchdate),
-                    make_doubles_sql(common_data.ResultCategory.DD1,
-                                     result["womens_doubles"], matchdate),
-                    make_doubles_sql(common_data.ResultCategory.MX1,
-                                     result["mixed_doubles"], matchdate),
-                ] if i is not None]
-                if (winner := result["winner"]) is not None:
-                    winner = orm.result.WinningTeam.HOME if winner is marespider.Side.HOME else orm.result.WinningTeam.AWAY
-                home_wins = sum(
-                    bool(s.home_player_result.win) for s in singles_results
-                ) + sum(bool(d.home_pair_result.win) for d in doubles_results)
-                away_wins = sum(
-                    bool(s.away_player_result.win) for s in singles_results
-                ) + sum(bool(d.away_pair_result.win) for d in doubles_results)
+        # TODO: use the new common_data.results classes
+        for item in data:
+            result = cattrs.structure(item, common_data.TeamMatchResult)
+            result_url = "/".join(result.url.split("/")[-2:])
+            click.secho(f"found result for: {result_url}", fg="red")
+            matchdate = orm.MatchDate.one(url=result_url)
+            singles_results = [
+                make_singles_sql(cat, res, matchdate) for cat, res in result.singles.items()
+            ]
+            singles_results = [s for s in singles_results if s is not None]
+            doubles_results = [
+                make_doubles_sql(cat, res, matchdate) for cat, res in result.doubles.items()
+            ]
+            doubles_results = [d for d in doubles_results if d is not None]
+            all_results = singles_results + doubles_results
+
+            def side_win(side: common_data.Side) -> Callable[[common_data.DoublesResult | common_data.SinglesResult], bool]:
+                def inner(result: common_data.SinglesResult | common_data.DoublesResult) -> bool:
+                    return bool(result.winner is side)
+                return inner
+            if (winner := result.winner) is not None:
+                winner = orm.result.WinningTeam.HOME if winner is marespider.Side.HOME else orm.result.WinningTeam.AWAY
+            home_wins = sum(
+                side_win(common_data.Side.HOME)(s) for s in all_results
+            )
+            away_wins = sum(
+                side_win(common_data.Side.AWAY)(s) for s in all_results
+            )
+            home_points = home_wins // 2 if singles_results else home_wins
+            away_points = away_wins // 2 if singles_results else away_wins
+            matchresult: orm.MatchResult
+            if existing := orm.MatchResult.one_or_none(match_date=matchdate):
+                matchresult = existing
+                matchresult.winner = winner
+                matchresult.home_points = home_points
+                matchresult.away_points = away_points
+            else:
                 matchresult = orm.MatchResult(
                     match_date=matchdate,
                     winner=winner,
                     walkover=False,
-                    home_points=home_wins // 2,
-                    away_points=away_wins // 2)
-                if existing := orm.MatchResult.one_or_none(match_date=matchdate):
-                    existing.winner = matchresult.winner
-                    matchresult = existing
-                session.add_all(singles_results)
-                session.add_all(doubles_results)
-                session.add(matchresult)
-                session.commit()
-            except:
-                ...
+                    home_points=home_points,
+                    away_points=away_points)
+            session.add_all(singles_results)
+            session.add_all(doubles_results)
+            session.add(matchresult)
+            session.commit()
 
 
 @ results.command("show")

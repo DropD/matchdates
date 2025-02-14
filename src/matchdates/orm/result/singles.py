@@ -39,6 +39,8 @@ class SinglesResult(base.IDMixin, base.Base):
         "away_player_result", "player", default=None
     )
 
+    walkover_winner: Mapped[common_data.Side] = common_data.Side.NEITHER
+
     def check_completeness(self) -> None:
         if not self.home_player_result or not self.away_player_result:
             raise errors.IncompleteModelError(
@@ -56,6 +58,19 @@ class SinglesResult(base.IDMixin, base.Base):
                 if i is not None or j is not None
             ]
         )
+
+    @property
+    def winner(self) -> common_data.Side:
+        if not self.home_player_result or not self.away_player_result:
+            return self.walkover_winner
+        if self.home_player_result.win and not self.away_player_result.win:
+            return common_data.Side.HOME
+        elif not self.home_player_result.win and self.away_player_result.win:
+            return common_data.Side.AWAY
+        elif not any([self.home_player_result.win, self.away_player_result.win]):
+            return common_data.Side.NEITHER
+        else:
+            raise ValueError
 
     @property
     def table_row(self) -> list:

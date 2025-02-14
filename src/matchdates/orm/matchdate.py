@@ -192,6 +192,7 @@ def update_match_date(
 
         if change_reasons:
             if (
+                existing.changelog and
                 existing.last_change.date_time == existing.date_time
                 and existing.last_change.location == existing.location
             ):

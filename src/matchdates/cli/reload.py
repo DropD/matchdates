@@ -14,7 +14,7 @@ from .main import main
 from . import constants
 
 
-def recrawl() -> None:
+def recrawl() -> pathlib.Path:
     click.echo("recrawling data")
     logging.getLogger("scrapy.core.scraper").setLevel(logging.WARN)
     logging.getLogger("scrapy.core.engine").setLevel(logging.INFO)

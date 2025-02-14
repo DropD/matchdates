@@ -24,6 +24,7 @@ thefuzz = "^0.22.1"
 pydantic = "^2.10.6"
 attrs = "^25.1.0"
 cattrs = "^24.1.2"
+click-spinner = "^0.1.10"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"

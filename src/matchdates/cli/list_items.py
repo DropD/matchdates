@@ -2,6 +2,7 @@ import dataclasses
 from typing import Optional
 
 import click
+import pendulum
 import tabulate
 import sqlalchemy as sqla
 
@@ -143,7 +144,7 @@ def players(ctx, by_team: Optional[str]) -> None:
 @list_items.command("matches")
 @click.option("--by-team", type=param_types.team.Team(), default=None)
 @click.option("--by-location", type=param_types.location.Location(), default=None)
-def matches(by_team: Optional[str], by_location: Optional[orm.Location]):
+def matches(by_team: Optional[orm.Team], by_location: Optional[orm.Location]):
     """List matches"""
     matches: list[orm.MatchDate]
     with orm.db.get_session() as session:
@@ -165,3 +166,82 @@ def matches(by_team: Optional[str], by_location: Optional[orm.Location]):
             matches = orm.MatchDate.all()
         matches.sort(key=lambda m: m.local_date_time)
         click.echo(format.tabulate_match_dates(matches))
+
+
+@list_items.command("results")
+@click.option("--by-team", type=param_types.team.Team(), default=None)
+@click.option("--by-season", type=param_types.season.Season(), default=None)
+def results(by_team: orm.Team | None, by_season: orm.Season | None):
+    """List Match results."""
+    results: list[orm.MatchResult]
+    with orm.db.get_session() as session:
+        must_filter = any([by_team, by_season])
+        if must_filter:
+            by_team_filters = (
+                (orm.MatchDate.home_team == by_team)
+                | (orm.MatchDate.away_team == by_team)
+            )
+            by_season_filters = (orm.MatchDate.season == by_season)
+            filters = None
+            if by_team:
+                filters = by_team_filters
+            if by_season:
+                if filters is None:
+                    filters = by_season_filters
+                else:
+                    filters &= by_season_filters
+            matches = (
+                session.scalars(
+                    orm.MatchDate.select()
+                    .filter(
+                        filters
+                        & orm.MatchDate.match_result
+                    )
+                ).all()
+            )
+            results = [m.match_result for m in matches]
+        else:
+            results = orm.MatchResult.all()
+        results.sort(key=lambda r: r.match_date.local_date_time)
+        click.echo(tabulate.tabulate(
+            [
+                (
+                    (d := pendulum.instance(r.match_date.local_date_time)).format("dd"),
+                    d.date().isoformat(),
+                    format.color_team(r.match_date.home_team.name),
+                    r.home_points,
+                    ":",
+                    r.away_points,
+                    format.color_team(r.match_date.away_team.name),
+                    r.match_date.full_url,
+                )
+                for r in results
+            ],
+            headers=[
+                "Weekday",
+                "Date",
+                "Home Team",
+                "",
+                "",
+                "",
+                "Away Team",
+                "URL"
+            ]
+        ))
+
+
+@list_items.command("seasons")
+def seasons():
+    seasons = orm.Season.all()
+    season_dates = {}
+    for season in seasons:
+        dates = [m.local_date_time for m in season.match_dates]
+        season_dates[season.id] = (min(dates).date(), max(dates).date())
+    click.echo(tabulate.tabulate(
+        [
+            [
+                f"{season_dates[s.id][0]} - {season_dates[s.id][1]}",
+                str(s)
+            ] for s in orm.Season.all()
+        ]
+    ))
