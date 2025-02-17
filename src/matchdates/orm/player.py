@@ -61,6 +61,10 @@ class Player(base.IDMixin, base.Base):
                 )
         return doubles_pair
 
+    @property
+    def player_nr(self) -> str:
+        return self.url.rsplit("/", 1)[1]
+
     def __str__(self) -> str:
         return self.name
 
@@ -86,6 +90,18 @@ class DoublesPair(base.IDMixin, base.Base):
 
         back_populates="doubles_pair", init=False, repr=False,
         default_factory=list
+    )
+
+    team_assocs: Mapped[list[TeamPairAssociation]] = sqla.orm.relationship(
+        back_populates="pair",
+        init=False, repr=False, default_factory=list
+    )
+    teams: AssociationProxy[list[Team]] = association_proxy(
+        "team_assocs",
+        "team",
+        creator=lambda team_obj: TeamPairAssociation(team=team_obj),
+        default_factory=list,
+        repr=False,
     )
 
     def __post_init__(self) -> None:
@@ -163,3 +179,22 @@ class TeamAssociation(base.Base):
     player: Mapped[Player] = sqla.orm.relationship(
         back_populates="team_assocs", default=None
     )
+
+
+class TeamPairAssociation(base.Base):
+    __tablename__ = "pair_teams_association"
+    team_id: Mapped[int] = sqla.orm.mapped_column(
+        sqla.ForeignKey(Team.id), primary_key=True, init=False
+    )
+    pair_id: Mapped[int] = sqla.orm.mapped_column(
+        sqla.ForeignKey(DoublesPair.id), primary_key=True, init=False
+    )
+    team: Mapped[Team] = sqla.orm.relationship(
+        back_populates="pair_assocs", default=None)
+    pair: Mapped[DoublesPair] = sqla.orm.relationship(
+        back_populates="team_assocs", default=None
+    )
+
+
+def by_team(team: Team) -> sqla.sql.elements.BinaryExpression:
+    return (Player.teams.contains(team))

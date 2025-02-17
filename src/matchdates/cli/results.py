@@ -329,12 +329,28 @@ def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], all: bool, all
             doubles_results = [d for d in doubles_results if d is not None]
             all_results = singles_results + doubles_results
 
+            for sr in singles_results:
+                if sr.home_player and matchdate.home_team not in sr.home_player.teams:
+                    sr.home_player.teams.append(matchdate.home_team)
+                if sr.away_player and matchdate.away_team not in sr.away_player.teams:
+                    sr.away_player.teams.append(matchdate.away_team)
+
+            for dr in doubles_results:
+                if dr.home_pair:
+                    for player in dr.home_pair.players:
+                        if matchdate.home_team not in player.teams:
+                            player.teams.append(matchdate.home_team)
+                if dr.away_pair:
+                    for player in dr.away_pair.players:
+                        if matchdate.away_team not in player.teams:
+                            player.teams.append(matchdate.away_team)
+
             def side_win(side: common_data.Side) -> Callable[[common_data.DoublesResult | common_data.SinglesResult], bool]:
                 def inner(result: common_data.SinglesResult | common_data.DoublesResult) -> bool:
                     return bool(result.winner is side)
                 return inner
             if (winner := result.winner) is not None:
-                winner = orm.result.WinningTeam.HOME if winner is marespider.Side.HOME else orm.result.WinningTeam.AWAY
+                winner = orm.result.WinningTeam.HOME if winner is common_data.Side.HOME else orm.result.WinningTeam.AWAY
             home_wins = sum(
                 side_win(common_data.Side.HOME)(s) for s in all_results
             )

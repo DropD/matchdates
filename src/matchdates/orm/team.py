@@ -18,7 +18,7 @@ __all__ = ["Team"]
 
 if typing.TYPE_CHECKING:
     from .matchdate import MatchDate, AwayTeamAssociation, HomeTeamAssociation
-    from .player import Player, TeamAssociation
+    from .player import DoublesPair, Player, TeamAssociation, TeamPairAssociation
 
 
 def create_away_team_assoc(match_date_obj: MatchDate) -> AwayTeamAssociation:
@@ -37,6 +37,11 @@ def create_player_team_assoc(player_obj: Player) -> TeamAssociation:
     from .player import TeamAssociation
 
     return TeamAssociation(player=player_obj)
+
+
+def create_pair_team_assoc(pair_obj: DoublesPair) -> TeamPairAssociation:
+    from .player import TeamPairAssociation
+    return TeamPairAssociation(pair=pair_obj)
 
 
 class Team(base.IDMixin, base.Base):
@@ -91,6 +96,16 @@ class Team(base.IDMixin, base.Base):
         "player_assocs",
         "player",
         creator=create_player_team_assoc,
+        default_factory=list, repr=False
+    )
+
+    pair_assocs: Mapped[list[TeamPairAssociation]] = sqla.orm.relationship(
+        back_populates="team", cascade="all, delete-orphan", init=False, repr=False
+    )
+    doubles_pairs: AssociationProxy[list[DoublesPair]] = association_proxy(
+        "pair_assocs",
+        "pair",
+        creator=create_pair_team_assoc,
         default_factory=list, repr=False
     )
 

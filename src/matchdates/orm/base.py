@@ -35,6 +35,14 @@ class Base(sqla.orm.MappedAsDataclass, sqla.orm.DeclarativeBase):
         return db.get_session().session.get(cls, id)
 
     @classmethod
+    def filter_by(cls: type[Self], **filters: Any) -> list[Self]:
+        return db.get_session().scalars(cls.select().filter_by(**filters)).all()
+
+    @classmethod
+    def filter(cls: type[Self], *filters: Any) -> list[Self]:
+        return db.get_session().scalars(cls.select().filter(*filters)).all()
+
+    @classmethod
     def one(cls: type[Self], **filters: Any) -> Self:
         return db.get_session().scalars(cls.select().filter_by(**filters)).one()
 

@@ -18,6 +18,7 @@ from .season import Season
 
 if typing.TYPE_CHECKING:
     from .result import SinglesResult, DoublesResult, MatchResult
+    from .player import Player
 
 
 class MatchDate(base.IDMixin, base.Base):
@@ -230,3 +231,25 @@ def update_match_date(
         return MatchDateFromDataResult(
             match_date=new, status=DocumentFromDataStatus.NEW, change_reasons=[]
         )
+
+
+def by_team(team: Team) -> sqla.sql.elements.BooleanClauseList:
+    return ((MatchDate.home_team == team) | (MatchDate.away_team == team))
+
+
+def by_season(season: Season) -> sqla.sql.elements.BinaryExpression:
+    return MatchDate.season == season
+
+
+def player_in_match_for_team(player: Player, match: MatchDate, team: Team) -> bool:
+    if match.home_team == team:
+        if any(s.home_player == player for s in match.singles_results):
+            return True
+        elif any(d.home_pair and player in d.home_pair.players for d in match.doubles_results):
+            return True
+    elif match.away_team == team:
+        if any(s.away_player == player for s in match.singles_results):
+            return True
+        elif any(d.away_pair and player in d.away_pair.players for d in match.doubles_results):
+            return True
+    return False

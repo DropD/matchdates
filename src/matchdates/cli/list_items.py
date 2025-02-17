@@ -66,13 +66,7 @@ def player_names(player):
             return (player.name, "")
 
 
-def players_by_team(team: Optional[str]) -> None:
-    home_matches = list(models.MatchDate.find({"home_team": team}))
-    away_matches = list(models.MatchDate.find({"away_team": team}))
-    home_results = list(models.MatchResult.find(
-        {"match_date": {"$in": home_matches}}))
-    away_results = list(models.MatchResult.find(
-        {"match_date": {"$in": away_matches}}))
+def players_by_team(team: Optional[orm.Team]) -> None:
 
     @dataclasses.dataclass
     class PlayerRow:
@@ -82,51 +76,98 @@ def players_by_team(team: Optional[str]) -> None:
         events: int
         matches: int
 
-    collected_players: dict[models.Player: list[str, str, str, int, int]] = {}
-    for results, side in [(home_results, "home"), (away_results, "away")]:
-        for result in results:
-            seen_players: set[models.Player] = set()
-            for event in result.events:
-                for player in event.players[side]:
-                    collected_players.setdefault(
-                        player,
-                        PlayerRow(
-                            last=(names := player_names(player))[1],
-                            first=names[0],
-                            player_nr=player.url.rsplit("/", 1)[1],
-                            events=0,
-                            matches=0,
-                        ),
-                    ).events += 1
-                    if player not in seen_players:
-                        collected_players[player].matches += 1
-                    seen_players.add(player)
-    player_table = sorted(
-        [
-            [player.last, player.first, player.player_nr,
-                player.events, player.matches]
-            for player in collected_players.values()
-        ],
-        key=lambda row: (row[-1], row[-2]),
-        reverse=True,
-    )
-    headers = ["Last", "First", "player_nr", "Events Played", "Matches played"]
+    click.echo(f"Players for Team {team}")
 
-    click.echo(tabulate.tabulate(player_table, headers=headers))
+    with orm.db.get_session() as session:
+        players = orm.Player.filter(orm.player.by_team(team))
+        matches_by_team = orm.MatchDate.filter(orm.matchdate.by_team(team))
+        player_table = {}
+        headers = [
+            "Name",
+            "SB Nr",
+            "Nr Events for Team",
+            "Nr Events Total",
+            "Nr Matches for Team",
+            "Nr Matches Total"
+        ]
+        for player in players:
+            row = []
+            row.append(player.name)
+            row.append(player.player_nr)
+            filtered_by_player = [
+                m for m in matches_by_team if orm.matchdate.player_in_match_for_team(player, m, team)]
+            row.append(len(filtered_by_player))
+            singles_results = player.home_singles_results + player.away_singles_results
+            singles_events = set(
+                r.singles_result.match_date.id for r in singles_results)
+            doubles_results = [i for j in
+                               [p.home_doubles_results + p.away_doubles_results for p in player.doubles_pairs] for i in j]
+            doubles_events = set(
+                r.doubles_result.match_date.id for r in doubles_results
+            )
+            row.append(len(singles_events | doubles_events))
+            results_for_team = []
+            for m in filtered_by_player:
+                for r in singles_results:
+                    if r.singles_result in m.singles_results:
+                        results_for_team.append(r)
+                for d in doubles_results:
+                    if d.doubles_result in m.doubles_results:
+                        results_for_team.append(d)
+            row.append(len(results_for_team))
+            row.append(len(singles_results + doubles_results))
+            season_key = str(filtered_by_player[0].season)
+            player_table.setdefault(season_key, [])
+            player_table[season_key].append(row)
+        for k, v in player_table.items():
+            v.sort(key=lambda row: (row[2], row[4]), reverse=True)
+            click.echo(f"\nSeason {k}:")
+            click.echo(tabulate.tabulate(v, headers=headers))
+
+    # collected_players: dict[models.Player: list[str, str, str, int, int]] = {}
+    # for results, side in [(home_results, "home"), (away_results, "away")]:
+    #     for result in results:
+    #         seen_players: set[models.Player] = set()
+    #         for event in result.events:
+    #             for player in event.players[side]:
+    #                 collected_players.setdefault(
+    #                     player,
+    #                     PlayerRow(
+    #                         last=(names := player_names(player))[1],
+    #                         first=names[0],
+    #                         player_nr=player.url.rsplit("/", 1)[1],
+    #                         events=0,
+    #                         matches=0,
+    #                     ),
+    #                 ).events += 1
+    #                 if player not in seen_players:
+    #                     collected_players[player].matches += 1
+    #                 seen_players.add(player)
+    # player_table = sorted(
+    #     [
+    #         [player.last, player.first, player.player_nr,
+    #             player.events, player.matches]
+    #         for player in collected_players.values()
+    #     ],
+    #     key=lambda row: (row[-1], row[-2]),
+    #     reverse=True,
+    # )
+    # headers = ["Last", "First", "player_nr", "Events Played", "Matches played"]
+    #
 
 
 @list_items.command("players")
 @click.option("--by-team", type=param_types.team.Team(), default=None)
 @click.pass_context
-def players(ctx, by_team: Optional[str]) -> None:
+def players(ctx, by_team: orm.Team | None) -> None:
     """List Players"""
     if by_team:
         players_by_team(by_team)
         ctx.exit(0)
+    with orm.db.get_session():
+        players = orm.Player.all()
 
-    players = list(models.Player.find({}))
-
-    players.sort(key=lambda player: player_names(player)[1])
+        players.sort(key=lambda player: player_names(player)[1])
     click.echo(
         tabulate.tabulate(
             [
@@ -177,19 +218,14 @@ def results(by_team: orm.Team | None, by_season: orm.Season | None):
     with orm.db.get_session() as session:
         must_filter = any([by_team, by_season])
         if must_filter:
-            by_team_filters = (
-                (orm.MatchDate.home_team == by_team)
-                | (orm.MatchDate.away_team == by_team)
-            )
-            by_season_filters = (orm.MatchDate.season == by_season)
             filters = None
             if by_team:
-                filters = by_team_filters
+                filters = orm.matchdate.by_team(by_team)
             if by_season:
                 if filters is None:
-                    filters = by_season_filters
+                    filters = orm.matchdate.by_season(by_season)
                 else:
-                    filters &= by_season_filters
+                    filters &= orm.matchdate.by_season(by_season)
             matches = (
                 session.scalars(
                     orm.MatchDate.select()
