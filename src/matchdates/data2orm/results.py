@@ -82,9 +82,14 @@ class ResultToOrm:
         Responsible for
         - not duplicating MatchResults
         """
+        url_parts = node.url.split("/")
+        season_url = "/".join(url_parts[:2])
+        matchdate_url = "/".join(url_parts[2:])
         if not self.matchdate:
+            season = orm.Season.one(url=season_url)
             self.matchdate = orm.MatchDate.one(
-                url="/".join(node.url.split("/")[-2:])
+                url=matchdate_url,
+                season=season
             )
         singles_results = [
             self.visit(result, category=category) for category, result
@@ -97,7 +102,6 @@ class ResultToOrm:
         team_points = team_match_points(
             count_wins(singles_results + doubles_results)
         )
-
         winner: orm.result.WinningTeam | None = None
         match node.winner:
             case common_data.Side.HOME:
@@ -107,6 +111,10 @@ class ResultToOrm:
             case _:
                 winner = None
 
+        if winner and not singles_results and not doubles_results:
+            team_points[node.winner] = 3
+            team_points[node.winner.opposite] = 0
+
         result = orm.MatchResult.one_or_none(
             match_date=self.matchdate
         ) or orm.MatchResult(
@@ -114,13 +122,14 @@ class ResultToOrm:
             winner=winner,
             home_points=team_points[common_data.Side.HOME],
             away_points=team_points[common_data.Side.AWAY],
+            walkover=bool(not singles_results and not doubles_results)
         )
 
         result.winner = winner
-        result.home_points = team_points[common_data.Side.HOME],
-        result.away_points = team_points[common_data.Side.AWAY],
+        result.home_points = team_points[common_data.Side.HOME]
+        result.away_points = team_points[common_data.Side.AWAY]
         self.session.add(result)
-        session.commit()
+        self.session.commit()
         return result
 
     @visit.register

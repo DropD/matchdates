@@ -1,20 +1,94 @@
 import pytest
 
-from matchdates import common_data as cd, data2orm
+from matchdates import common_data as cd, data2orm, orm
 
 
 @pytest.fixture
-def players_ab():
+def players_ab() -> tuple[cd.Player, cd.Player]:
     player_a = cd.Player(name="A", url="l/1/player/1")
     player_b = cd.Player(name="B", url="l/1/player/2")
     return player_a, player_b
 
 
 @pytest.fixture
-def players_cd():
+def players_cd() -> tuple[cd.Player, cd.Player]:
     player_c = cd.Player(name="C", url="l/1/player/3")
     player_d = cd.Player(name="D", url="l/1/player/4")
     return player_c, player_d
+
+
+@pytest.fixture
+def team_result() -> cd.TeamMatchResult:
+    # player urls must match the ones from the top level conftest
+    anas = cd.Player(name="Anders Antonsen", url="l/1/player/1")
+    kodai = cd.Player(name="Kodai Naraoke", url="l/1/player/2")
+    victor = cd.Player(name="Victor Axelsen", url="l/1/player/3")
+    yuta = cd.Player(name="Yuta Watanabe", url="l/1/player/4")
+    rasmus = cd.Player(name="Rasmus Gemke", url="l/1/player/5")
+    line = cd.Player(name="Line Christophersen", url="l/1/player/6")
+    mia = cd.Player(name="Mia Blichfeldt", url="l/1/player/7")
+    endo = cd.Player(name="Endo Kirakawa", url="l/1/player/8")
+    akane = cd.Player(name="Akane Yamaguchi", url="l/1/player/9")
+    arisa = cd.Player(name="Arisa Higashino", url="l/1/player/10")
+    return cd.TeamMatchResult(
+        singles={
+            cd.ResultCategory.HE1: cd.SinglesResult(
+                home_player=anas,
+                away_player=kodai,
+                set_1=cd.Set(14, 21),
+                set_2=cd.Set(21, 19),
+                set_3=cd.Set(5, 21),
+                winner=cd.Side.AWAY
+            ),
+            cd.ResultCategory.HE2: cd.SinglesResult(
+                home_player=victor,
+                away_player=yuta,
+                set_1=cd.Set(21, 3),
+                set_2=cd.Set(21, 18),
+                winner=cd.Side.HOME
+            ),
+            cd.ResultCategory.HE3: cd.SinglesResult(
+                home_player=rasmus,
+                away_player=endo,
+                set_1=cd.Set(21, 17),
+                set_2=cd.Set(21, 14),
+                winner=cd.Side.HOME
+            ),
+            cd.ResultCategory.DE1: cd.SinglesResult(
+                home_player=mia,
+                away_player=akane,
+                set_1=cd.Set(19, 21),
+                set_2=cd.Set(19, 21),
+                winner=cd.Side.AWAY
+            )
+        },
+        doubles={
+            cd.ResultCategory.HD1: cd.DoublesResult(
+                home_pair=cd.DoublesPair(anas, victor),
+                away_pair=cd.DoublesPair(yuta, kodai),
+                set_1=cd.Set(14, 21),
+                set_2=cd.Set(21, 19),
+                set_3=cd.Set(5, 21),
+                winner=cd.Side.AWAY
+            ),
+            cd.ResultCategory.DD1: cd.DoublesResult(
+                home_pair=cd.DoublesPair(line, mia),
+                away_pair=cd.DoublesPair(akane, arisa),
+                set_1=cd.Set(19, 21),
+                set_2=cd.Set(19, 21),
+                winner=cd.Side.AWAY
+            ),
+            cd.ResultCategory.MX1: cd.DoublesResult(
+                home_pair=cd.DoublesPair(rasmus, line),
+                away_pair=cd.DoublesPair(endo, arisa),
+                set_1=cd.Set(21, 17),
+                set_2=cd.Set(21, 18),
+                winner=cd.Side.HOME
+            )
+        },
+        url="league/12345/match/1",
+        winner=cd.Side.AWAY
+    )
 
 
 def make_empty_singles(winner: cd.Side) -> cd.SinglesResult:
@@ -199,3 +273,41 @@ def test_visit_doubles_result(db_session, matchdate, players_ab, players_cd):
     assert retired.winner is cd.Side.HOME
     assert retired.home_pair.teams == [matchdate.home_team]
     assert retired.away_pair.teams == [matchdate.away_team]
+
+
+def test_visit_result(db_session, matchdate, team_result):
+    db_session.add(matchdate)
+    db_session.commit()
+    testee = data2orm.results.ResultToOrm(
+        session=db_session, matchdate=matchdate
+    )
+    testee.visit(team_result)
+    assert matchdate.match_result.winner == orm.result.WinningTeam.AWAY
+    assert matchdate.match_result.home_points == 1
+    assert matchdate.match_result.away_points == 2
+    assert len(matchdate.singles_results) == 4
+    assert len(matchdate.doubles_results) == 3
+
+
+def test_visit_update_result(db_session, matchdate, team_result, match_result):
+    db_session.add(matchdate)
+    db_session.add(match_result)
+    db_session.commit()
+    ref_nr_team_results = len(orm.MatchResult.all())
+    ref_nr_singles_results = len(orm.SinglesResult.all())
+    ref_nr_doubles_results = len(orm.DoublesResult.all())
+    ref_nr_players = len(orm.Player.all())
+    ref_nr_pairs = len(orm.DoublesPair.all())
+
+    testee = data2orm.results.ResultToOrm(
+        session=db_session, matchdate=matchdate
+    )
+    testee.visit(team_result)
+    assert matchdate.match_result.id == match_result.id
+    assert len(matchdate.singles_results) == 4
+    assert len(matchdate.doubles_results) == 3
+    assert len(orm.MatchResult.all()) == ref_nr_team_results
+    assert len(orm.SinglesResult.all()) == ref_nr_singles_results
+    assert len(orm.DoublesResult.all()) == ref_nr_doubles_results
+    assert len(orm.Player.all()) == ref_nr_players
+    assert len(orm.DoublesPair.all()) == ref_nr_pairs

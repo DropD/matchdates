@@ -43,6 +43,22 @@ class Side(enum.StrEnum):
     HOME = enum.auto()
     AWAY = enum.auto()
     NEITHER = enum.auto()
+    BOTH = enum.auto()
+
+    @property
+    def opposite(self) -> Self:
+        cls = self.__class
+        match self:
+            case cls.HOME:
+                return cls.AWAY
+            case cls.AWAY:
+                return cls.HOME
+            case cls.NEITHER:
+                return cls.BOTH
+            case cls.BOTH:
+                return cls.NEITHER
+            case _:
+                raise ValueError
 
 
 @attrs.define

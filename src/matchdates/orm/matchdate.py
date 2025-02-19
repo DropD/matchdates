@@ -25,7 +25,7 @@ class MatchDate(base.IDMixin, base.Base):
     """A match date represents the time and place of an interclub match."""
 
     __tablename__ = "matchdate"
-    url: Mapped[str] = sqla.orm.mapped_column(unique=True)
+    url: Mapped[str]
     date_time: Mapped[pendulum.DateTime] = sqla.orm.mapped_column(
         sqla.DateTime)
 
@@ -75,6 +75,10 @@ class MatchDate(base.IDMixin, base.Base):
 
     match_result: Mapped[MatchResult] = sqla.orm.relationship(
         back_populates="match_date", default=None, repr=False
+    )
+
+    __table_args__ = (
+        sqla.UniqueConstraint("url", "season_id"),
     )
 
     @property
@@ -178,8 +182,12 @@ def update_match_date(
     urlmatch = re.match(
         r".*(?P<season_url>league\/.*)\/(?P<match_url>team-match\/\d*).*", url)
     season_url = urlmatch.group("season_url")
+    season = Season.one_or_none(url=season_url)
+    if not season:
+        season = Season(url=season_url)
+        session.add(season)
     match_url = urlmatch.group("match_url")
-    existing = MatchDate.one_or_none(url=match_url)
+    existing = MatchDate.one_or_none(url=match_url, season=season)
     session.add(existing)
     session.add(location)
     date_time = pendulum.DateTime.fromisoformat(
@@ -214,10 +222,6 @@ def update_match_date(
                 match_date=existing, status=DocumentFromDataStatus.UNCHANGED, change_reasons=[]
             )
     else:
-        season = Season.one_or_none(url=season_url)
-        if not season:
-            season = Season(url=season_url)
-            session.add(season)
         new = MatchDate(
             url=match_url,
             date_time=date_time,
