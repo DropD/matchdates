@@ -53,12 +53,12 @@ def club(season):
 
 @pytest.fixture
 def team1(club, season):
-    yield orm.team.Team(name="BC Zürich-Affoltern 1", team_nr=1, club=club, seasons=[season])
+    yield orm.team.Team(name="BC Zürich-Affoltern 1", url="team/1", team_nr=1, club=club, seasons=[season])
 
 
 @pytest.fixture
 def team2(club, season):
-    yield orm.team.Team(name="BC Zürich-Affoltern 2", team_nr=2, club=club, seasons=[season])
+    yield orm.team.Team(name="BC Zürich-Affoltern 2", url="team/2", team_nr=2, club=club, seasons=[season])
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def draw(season):
 @pytest.fixture
 def matchdate(location, team1, team2, season, draw):
     yield orm.matchdate.MatchDate(
-        url="league/12345/match/1",
+        url="match/1",
         date_time=pendulum.now() + pendulum.Duration(days=7),
         location=location,
         home_team=team1,

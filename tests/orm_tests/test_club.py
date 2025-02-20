@@ -11,7 +11,8 @@ def test_create_club(db_session):
 
 def test_add_team(db_session):
     club = orm.club.Club("Badcity Badminton Club")
-    team = orm.team.Team("Badcity Badminton Club 4", 4, club=None)
+    team = orm.team.Team("Badcity Badminton Club 4",
+                         4, url="team/1", club=None)
     club.teams.append(team)
 
     db_session.add(club)

@@ -181,12 +181,12 @@ def test_visit_matchdate_update(db_session, converter, matchdate):
             url=matchdate.url,
             date=matchdate.date_time + pendulum.duration(hours=1),
             home_team=cd.Team(
-                url=f"team/{matchdate.home_team.team_nr}",
+                url=matchdate.home_team.url,
                 name=matchdate.home_team.name,
                 club=cd.Club(matchdate.home_team.club.name)
             ),
             away_team=cd.Team(
-                url=f"team/{matchdate.away_team.team_nr}",
+                url=matchdate.away_team.url,
                 name=matchdate.away_team.name,
                 club=cd.Club(matchdate.away_team.club.name)
             ),
