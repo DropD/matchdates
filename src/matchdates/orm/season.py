@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 
+import pendulum
 import sqlalchemy as sqla
 import sqlalchemy.orm
 from sqlalchemy.orm import Mapped
@@ -18,6 +19,7 @@ if typing.TYPE_CHECKING:
     from .team import Team, TeamSeasonAssociation
     from .club import Club, ClubSeasonAssociation
     from .matchdate import MatchDate
+    from .draw import Draw
 
 
 class Season(base.IDMixin, base.Base):
@@ -25,6 +27,11 @@ class Season(base.IDMixin, base.Base):
 
     __tablename__ = "season"
     url: Mapped[str] = sqla.orm.mapped_column(unique=True)
+    name: Mapped[str]
+    start_date: Mapped[pendulum.Date] = sqla.orm.mapped_column(
+        sqla.Date)
+    end_date: Mapped[pendulum.Date] = sqla.orm.mapped_column(
+        sqla.Date)
 
     team_assocs: Mapped[list[TeamSeasonAssociation]] = sqla.orm.relationship(
         back_populates="season", cascade="all, delete-orphan", init=False, repr=False
@@ -51,6 +58,10 @@ class Season(base.IDMixin, base.Base):
     match_dates: Mapped[list[MatchDate]] = sqla.orm.relationship(
         back_populates="season", default_factory=list, repr=False
     )
+
+    draws: Mapped[list[Draw]] = sqla.orm.relationship(
+        back_populates="season", default_factory=list, repr=False
+    )
     # club_entries: Mapped[list["SeasonClub"]] = sqla.orm.relationship(
     #     back_populates="season"
     # )
@@ -60,4 +71,4 @@ class Season(base.IDMixin, base.Base):
     #     return [entry.club for entry in self.club_entries]
 
     def __str__(self) -> str:
-        return self.url
+        return self.name

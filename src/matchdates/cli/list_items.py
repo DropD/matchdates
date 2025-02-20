@@ -268,16 +268,12 @@ def results(by_team: orm.Team | None, by_season: orm.Season | None):
 
 @list_items.command("seasons")
 def seasons():
-    seasons = orm.Season.all()
-    season_dates = {}
-    for season in seasons:
-        dates = [m.local_date_time for m in season.match_dates]
-        season_dates[season.id] = (min(dates).date(), max(dates).date())
     click.echo(tabulate.tabulate(
         [
             [
-                f"{season_dates[s.id][0]} - {season_dates[s.id][1]}",
-                str(s)
+                s.name,
+                f"{s.start_date} - {s.end_date}",
+                s.url
             ] for s in orm.Season.all()
         ]
     ))

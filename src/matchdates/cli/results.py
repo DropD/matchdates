@@ -81,12 +81,13 @@ def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], all: bool, all
         for item in data:
             result = cattrs.structure(item, common_data.TeamMatchResult)
             url_parts = result.url.split("/")
-            season_url = "/".join(url_parts[:2])
-            matchdate_url = "/".join(url_parts[2:])
+            season_url = "/".join(url_parts[-4:-2])
+            matchdate_url = "/".join(url_parts[-2:])
             click.secho(f"found result for: {matchdate_url}", fg="red")
             season = orm.Season.one(url=season_url)
             matchdate = orm.MatchDate.one(url=matchdate_url, season=season)
-            data2orm.ResultToOrm(matchdate=matchdate).visit(result)
+            data2orm.results.ResultToOrm(
+                session=session, matchdate=matchdate).visit(result)
 
 
 @ results.command("show")

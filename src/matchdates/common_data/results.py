@@ -2,7 +2,6 @@ import enum
 from typing import Self
 
 import attrs
-import pydantic as pd
 
 
 __all__ = [

@@ -2,13 +2,14 @@ import json
 import logging
 import pathlib
 
+import cattrs
 import click
 import pendulum
 import textwrap
 from scrapy import crawler
 import sqlalchemy as sqla
 
-from .. import datespider, models, settings
+from .. import common_data as cd, data2orm, datespider, models, settings
 from .. import orm
 from .main import main
 from . import constants
@@ -133,45 +134,32 @@ def reload_sqlite(allow_rescrape: bool) -> None:
 
     click.echo("updating database")
 
+    converter = data2orm.matchdate.MatchdateToOrm(session=session)
     for item in data:
-        loc_data = item.pop("location")
-        location_result = orm.location.update_location(
-            **loc_data, session=session)
-        match location_result.status:
-            case models.DocumentFromDataStatus.CHANGED:
-                click.echo(
-                    f"Location address change: {location_result.location.name}")
+        matchitem = cattrs.structure(item, cd.MatchDate)
+        matchdate = converter.visit(matchitem)
+        last_change = next(
+            iter(reversed(matchdate.changelog))
+        ) if matchdate.changelog else None
+        if last_change and (
+                pendulum.now() - last_change.archived_date_time
+        ).in_seconds() < 5:
+            if last_change.location != matchdate.location:
+                click.echo("Location Change detected:")
                 click.echo(textwrap.indent(
-                    "\n".join(location_result.diff), constants.INDENT))
-            case models.DocumentFromDataStatus.NEW:
+                    str(match_result.match_date), constants.INDENT))
                 click.echo(
-                    f"New Location found: {location_result.location.name}")
-            case _:
-                ...
-
-        match_result = orm.matchdate.update_match_date(
-            location=location_result.location, session=session, **item
-        )
-
-        match match_result.status:
-            case models.DocumentFromDataStatus.CHANGED:
-                if models.MatchDateChangeReason.DATE in match_result.change_reasons:
-                    click.echo("Date Change detected:")
-                    click.echo(textwrap.indent(
-                        str(match_result.match_date), constants.INDENT))
-                    click.echo(
-                        textwrap.indent(
-                            f"Old Date: {match_result.archive_entry.date_time}", constants.INDENT
-                        )
+                    textwrap.indent(
+                        f"Old Location: {match_result.archive_entry.location.name}",
+                        constants.INDENT,
                     )
-                if models.MatchDateChangeReason.LOCATION in match_result.change_reasons:
-                    click.echo("Location Change detected:")
-                    click.echo(textwrap.indent(
-                        str(match_result.match_date), constants.INDENT))
-                    click.echo(
-                        textwrap.indent(
-                            f"Old Location: {match_result.archive_entry.location.name}",
-                            constants.INDENT,
-                        )
+                )
+            if last_change.date_time != matchdate.date_time:
+                click.echo("Date Change detected:")
+                click.echo(textwrap.indent(
+                    str(match_result.match_date), constants.INDENT))
+                click.echo(
+                    textwrap.indent(
+                        f"Old Date: {match_result.archive_entry.date_time}", constants.INDENT
                     )
-    session.close()
+                )

@@ -6,12 +6,12 @@ from typing import Iterator
 import pytest
 from scrapy import crawler
 
-from matchdates import common_data, marespider
+from matchdates import common_data, marespider, datespider
 
 
 @dataclasses.dataclass(kw_only=True)
 class Example:
-    filename: str
+    url: str
     winners: dict[common_data.ResultCategory, common_data.Side]
     team_points: dict[common_data.Side, int]
     team_retired: common_data.Side = common_data.Side.NEITHER
@@ -22,22 +22,30 @@ class Example:
         common_data.ResultCategory, common_data.Side
     ] = dataclasses.field(default_factory=dict)
     winner: common_data.Side
+    #
+    # @property
+    # def url(self) -> str:
+    #     # path = pathlib.Path(__file__).parent / "pages" / self.filename
+    #     # return f"file://{path.absolute()}"
+    #     return self.url
 
     @property
-    def url(self) -> str:
-        path = pathlib.Path(__file__).parent / "pages" / self.filename
-        return f"file://{path.absolute()}"
+    def matchnr(self) -> str:
+        return self.url.replace(".html", "").split("/")[-1]
 
     @property
     def result_file_name(self) -> str:
-        matchnr = self.url.replace(".html", "").split("_")[-1]
-        return f"{matchnr}.json"
+        return f"{self.matchnr}.json"
+
+    @property
+    def date_file_name(self) -> str:
+        return f"matchdate-{self.matchnr}.json"
 
 
 @pytest.fixture(scope="session")
 def adjusted() -> Iterator[Example]:
     yield Example(
-        filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7162.html",
+        url="https://www.swiss-badminton.ch/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/7162",
         winners={
             common_data.ResultCategory.HE1: common_data.Side.AWAY,
             common_data.ResultCategory.HE2: common_data.Side.AWAY,
@@ -58,7 +66,7 @@ def adjusted() -> Iterator[Example]:
 @pytest.fixture(scope="session")
 def team_retired() -> Iterator[Example]:
     yield Example(
-        filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_6006.html",
+        url="https://www.swiss-badminton.ch/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/6006",
         winners={
             common_data.ResultCategory.HE1: common_data.Side.HOME,
             common_data.ResultCategory.HE2: common_data.Side.HOME,
@@ -80,7 +88,7 @@ def team_retired() -> Iterator[Example]:
 @pytest.fixture(scope="session")
 def standard_ul() -> Iterator[Example]:
     yield Example(
-        filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7467.html",
+        url="https://www.swiss-badminton.ch/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/7467",
         winners={
             common_data.ResultCategory.HE1: common_data.Side.AWAY,
             common_data.ResultCategory.HE2: common_data.Side.AWAY,
@@ -101,7 +109,7 @@ def standard_ul() -> Iterator[Example]:
 @pytest.fixture(scope="session")
 def standard_sl() -> Iterator[Example]:
     yield Example(
-        filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_8919.html",
+        url="https://www.swiss-badminton.ch/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/8919",
         winners={
             common_data.ResultCategory.DD1: common_data.Side.HOME,
             common_data.ResultCategory.HD1: common_data.Side.AWAY,
@@ -119,7 +127,7 @@ def standard_sl() -> Iterator[Example]:
 @pytest.fixture(scope="session")
 def walkover_player() -> Iterator[Example]:
     yield Example(
-        filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7455.html",
+        url="https://www.swiss-badminton.ch/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/7455",
         winners={
             common_data.ResultCategory.HE1: common_data.Side.AWAY,
             common_data.ResultCategory.HE2: common_data.Side.HOME,
@@ -144,7 +152,7 @@ def walkover_player() -> Iterator[Example]:
 @pytest.fixture(scope="session")
 def retired_player() -> Iterator[Example]:
     yield Example(
-        filename="https___www.swiss-badminton.ch_league_4D2A187C-0855-4B4F-B106-6B6413FC17BF_team-match_7033.html",
+        url="https://www.swiss-badminton.ch/league/4D2A187C-0855-4B4F-B106-6B6413FC17BF/team-match/7033",
         winners={
             common_data.ResultCategory.HE1: common_data.Side.HOME,
             common_data.ResultCategory.HE2: common_data.Side.HOME,
@@ -188,9 +196,11 @@ def scraped(
     examples = [request.getfixturevalue(example) for example in ALL_EXAMPLES]
     results_dir = tmp_path_factory.mktemp("results")
     result_file = results_dir / "results.json"
+    date_file = results_dir / "matchdates.json"
     proc = crawler.CrawlerProcess(
         settings={
             "FEEDS": {str(result_file.absolute()): {"format": "json"}},
+            "HTTPCACHE_ENABLED": True,
             "LOG_LEVEL": "ERROR",
         }
     )
@@ -200,10 +210,25 @@ def scraped(
             example.url for example in examples
         ]
     )
+    datespider.MatchDateSpider.custom_settings = {
+        "FEEDS": {str(date_file.absolute()): {"format": "json"}}
+    }
+    proc.crawl(
+        datespider.MatchDateSpider,
+        urls=[
+            example.url for example in examples
+        ]
+    )
     proc.start()
-    all_data = json.load(result_file.open())
-    for res in all_data:
-        matchnr = res["url"].replace(".html", "").split("_")[-1]
+    all_results = json.load(result_file.open())
+    for res in all_results:
+        matchnr = res["url"].split("/")[-1]
         res_file = results_dir / f"{matchnr}.json"
         res_file.write_text(json.dumps([res]))
+
+    all_matchdates = json.load(date_file.open())
+    for md in all_matchdates:
+        matchnr = md["url"].split("/")[-1]
+        md_file = results_dir / f"matchdate-{matchnr}.json"
+        md_file.write_text(json.dumps([md]))
     yield results_dir

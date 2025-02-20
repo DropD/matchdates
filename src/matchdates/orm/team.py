@@ -10,6 +10,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 from . import base
 from .season import Season
+from .draw import Draw
 from .club import Club
 
 
@@ -50,6 +51,7 @@ class Team(base.IDMixin, base.Base):
     __tablename__ = "team"
     name: Mapped[str] = sqla.orm.mapped_column(unique=True)
     team_nr: Mapped[int] = sqla.orm.mapped_column(unique=False)
+    url: Mapped[str | None]
 
     club_id: Mapped[int] = sqla.orm.mapped_column(
         sqla.ForeignKey("club.id"), init=False, repr=False
@@ -63,6 +65,18 @@ class Team(base.IDMixin, base.Base):
         "season_assocs",
         "season",
         creator=lambda season_obj: TeamSeasonAssociation(season=season_obj),
+        default_factory=list,
+        repr=False,
+    )
+
+    draw_assocs: Mapped[list[TeamDrawAssociation]] = sqla.orm.relationship(
+        back_populates="team", cascade="all, delete-orphan", init=False, repr=False
+    )
+    draws: AssociationProxy[list[Draw]] = association_proxy(
+        "draw_assocs",
+        "draw",
+        init=False,
+        creator=lambda draw_obj: TeamDrawAssociation(draw=draw_obj),
         default_factory=list,
         repr=False,
     )
@@ -124,4 +138,18 @@ class TeamSeasonAssociation(base.Base):
     team: Mapped[Team] = sqla.orm.relationship(
         back_populates="season_assocs", default=None)
     season: Mapped[Season] = sqla.orm.relationship(
+        back_populates="team_assocs", default=None)
+
+
+class TeamDrawAssociation(base.Base):
+    __tablename__ = "team_draw_assoc"
+    team_id: Mapped[int] = sqla.orm.mapped_column(
+        sqla.ForeignKey("team.id"), primary_key=True, init=False
+    )
+    draw_id: Mapped[int] = sqla.orm.mapped_column(
+        sqla.ForeignKey("draw.id"), primary_key=True, init=False
+    )
+    team: Mapped[Team] = sqla.orm.relationship(
+        back_populates="draw_assocs", default=None)
+    draw: Mapped[Draw] = sqla.orm.relationship(
         back_populates="team_assocs", default=None)

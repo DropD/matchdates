@@ -14,6 +14,7 @@ from . import base
 from .location import Location
 from .team import Team
 from .season import Season
+from .draw import Draw
 
 
 if typing.TYPE_CHECKING:
@@ -60,6 +61,13 @@ class MatchDate(base.IDMixin, base.Base):
     )
     season: Mapped[Season] = sqla.orm.relationship(
         back_populates="match_dates", default=None)
+
+    draw_id: Mapped[int | None] = sqla.orm.mapped_column(
+        sqla.ForeignKey("draw.id"), init=False, repr=False
+    )
+    draw: Mapped[Draw] = sqla.orm.relationship(
+        back_populates="match_dates", default=None
+    )
 
     changelog: Mapped[list[ChangeLogEntry]] = sqla.orm.relationship(
         back_populates="match_date", default_factory=list, repr=False

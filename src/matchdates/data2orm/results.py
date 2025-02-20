@@ -17,11 +17,12 @@ def count_wins(matches: list[common_data.SinglesResult | common_data.DoublesResu
 
 def team_match_points(win_count: collections.Counter[common_data.Side]) -> dict[common_data.Side, int]:
     nmatches = win_count.total()
+    no_points = {common_data.Side.HOME: 0, common_data.Side.AWAY: 0}
     match nmatches:
         case 7:
-            return {side: nwins // 2 for side, nwins in win_count.items()}
+            return no_points | {side: nwins // 2 for side, nwins in win_count.items()}
         case 4:
-            return dict(win_count)
+            return no_points | dict(win_count)
         case _:
             msg = f"Don't know how to count team points for team events with {nmatches} matches"
             raise NotImplemented(msg)
@@ -72,7 +73,7 @@ class ResultToOrm:
 
     @functools.singledispatchmethod
     def visit(self, node: Any, **kwargs: Any) -> orm.Base | None:
-        raise NotImplemented
+        raise NotImplementedError
 
     @visit.register
     def visit_teamresult(self, node: common_data.TeamMatchResult, **kwargs: Any) -> orm.MatchResult:

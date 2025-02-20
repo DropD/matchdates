@@ -38,7 +38,12 @@ def location():
 
 @pytest.fixture
 def season():
-    yield orm.season.Season(url="season/12345")
+    yield orm.season.Season(
+        name="Test Season 2024-25",
+        url="season/12345",
+        start_date=pendulum.Date(2024, 8, 1),
+        end_date=pendulum.Date(2025, 5, 31)
+    )
 
 
 @pytest.fixture
@@ -57,7 +62,12 @@ def team2(club, season):
 
 
 @pytest.fixture
-def matchdate(location, team1, team2, season):
+def draw(season):
+    return orm.Draw(url="draw/1", season=season)
+
+
+@pytest.fixture
+def matchdate(location, team1, team2, season, draw):
     yield orm.matchdate.MatchDate(
         url="league/12345/match/1",
         date_time=pendulum.now() + pendulum.Duration(days=7),
@@ -65,6 +75,7 @@ def matchdate(location, team1, team2, season):
         home_team=team1,
         away_team=team2,
         season=season,
+        draw=draw
     )
 
 

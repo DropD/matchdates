@@ -18,7 +18,8 @@ def get_settings_file() -> pathlib.Path:
 
 
 def get_crawl_datadir(settings: dict) -> pathlib.Path:
-    datadir = pathlib.Path(settings["crawling"]["datadir"]).expanduser().absolute()
+    datadir = pathlib.Path(settings["crawling"]
+                           ["datadir"]).expanduser().absolute()
     if not datadir.exists():
         datadir.mkdir()
     return datadir
@@ -30,4 +31,5 @@ SETTINGS = toml.load(get_settings_file())
 BOT_NAME = "mada"
 SPIDER_MODULES = ["matchdates.datespider", "matchdates.marespider"]
 HTTPCACHE_ENABLED = True
+HTTPCACHE_EXPIRATION_SECS = 3600
 LOG_LEVEL = "INFO"

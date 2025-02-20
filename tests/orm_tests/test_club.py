@@ -23,9 +23,8 @@ def test_add_team(db_session):
     assert team.club == club
 
 
-def test_add_season(db_session):
+def test_add_season(db_session, season):
     club = orm.club.Club("Badcity Badminton Club")
-    season = orm.season.Season(url="season/12345")
     club.seasons.append(season)
 
     db_session.add(club)
