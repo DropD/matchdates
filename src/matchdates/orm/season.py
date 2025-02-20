@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Self
 
 import pendulum
 import sqlalchemy as sqla
@@ -69,6 +70,10 @@ class Season(base.IDMixin, base.Base):
     # @property
     # def clubs(self):
     #     return [entry.club for entry in self.club_entries]
+
+    @classmethod
+    def current(cls) -> Self:
+        return next(iter(sorted(cls.all(), key=lambda s: s.end_date, reverse=True)))
 
     def __str__(self) -> str:
         return self.name

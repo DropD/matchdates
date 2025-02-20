@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import typing
 
 import pendulum
@@ -9,7 +8,6 @@ import sqlalchemy.orm
 from sqlalchemy.orm import Mapped
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
-from ..models import MatchDateFromDataResult, MatchDateChangeReason, DocumentFromDataStatus
 from . import base
 from .location import Location
 from .team import Team
@@ -175,74 +173,6 @@ class ChangeLogEntry(base.Base):
     @property
     def local_date_time(self) -> pendulum.DateTime:
         return pendulum.instance(self.date_time, tz=pendulum.local_timezone())
-
-
-def update_match_date(
-    *,
-    session: sqla.orm.Session,
-    url: str,
-    date: str,
-    home_team: str,
-    away_team: str,
-    location: Location,
-) -> MatchDateFromDataResult:
-    """Find existing match date (update if necessary) or add a new one from upstream."""
-    urlmatch = re.match(
-        r".*(?P<season_url>league\/.*)\/(?P<match_url>team-match\/\d*).*", url)
-    season_url = urlmatch.group("season_url")
-    season = Season.one_or_none(url=season_url)
-    if not season:
-        season = Season(url=season_url)
-        session.add(season)
-    match_url = urlmatch.group("match_url")
-    existing = MatchDate.one_or_none(url=match_url, season=season)
-    session.add(existing)
-    session.add(location)
-    date_time = pendulum.DateTime.fromisoformat(
-        date).astimezone(pendulum.local_timezone())
-    if existing:
-        change_reasons = []
-        if existing.local_date_time != date_time:
-            change_reasons.append(MatchDateChangeReason.DATE)
-        if existing.location != location:
-            change_reasons.append(MatchDateChangeReason.LOCATION)
-
-        if change_reasons:
-            if (
-                existing.changelog and
-                existing.last_change.date_time == existing.date_time
-                and existing.last_change.location == existing.location
-            ):
-                existing.date_time = date_time
-                existing.location = location
-            else:
-                existing.update_with_history(
-                    new_date_time=date_time, new_location=location)
-            session.commit()
-            return MatchDateFromDataResult(
-                match_date=existing,
-                status=DocumentFromDataStatus.CHANGED,
-                change_reasons=change_reasons,
-                archive_entry=existing.last_change,
-            )
-        else:
-            return MatchDateFromDataResult(
-                match_date=existing, status=DocumentFromDataStatus.UNCHANGED, change_reasons=[]
-            )
-    else:
-        new = MatchDate(
-            url=match_url,
-            date_time=date_time,
-            home_team=Team.one_or_none(name=home_team),
-            away_team=Team.one_or_none(name=away_team),
-            location=location,
-            season=season,
-        )
-        session.add(new)
-        session.commit()
-        return MatchDateFromDataResult(
-            match_date=new, status=DocumentFromDataStatus.NEW, change_reasons=[]
-        )
 
 
 def by_team(team: Team) -> sqla.sql.elements.BooleanClauseList:

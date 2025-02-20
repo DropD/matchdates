@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 import pathlib
-import tempfile
-from typing import Callable, Optional
 
 import cattrs
 import click
@@ -11,7 +9,7 @@ import click_spinner
 import pendulum
 from scrapy import crawler
 
-from matchdates import common_data, date_utils, marespider, orm, settings, data2orm
+from matchdates import common_data, marespider, orm, settings, data2orm
 from .main import main
 from .reload import latest_datafile, datafiles_outdated
 from . import param_types
@@ -55,17 +53,7 @@ def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], all: bool, all
             if all:
                 matches = orm.MatchDate.all()
             else:
-                today = pendulum.today()
-                last_season_start = date_utils.season_start(today)
-                matches = list(
-                    session.scalars(
-                        orm.MatchDate.select().filter(
-                            (orm.MatchDate.date_time
-                             < date_utils.date_to_datetime(today))  # & (orm.MatchDate.date_time
-                            # > last_season_start)
-                        )
-                    ).all()
-                )
+                matches = orm.MatchDate.filter(season=orm.Season.current())
         datadir = settings.get_crawl_datadir(settings.SETTINGS)
         datafiles = [
             i for i in datadir.iterdir() if i.name.startswith("matchresults")
@@ -93,18 +81,7 @@ def load_sqlite(ctx: click.Context, matches: list[orm.MatchDate], all: bool, all
 @ results.command("show")
 @ click.argument("match", type=param_types.match.Match())
 @ click.pass_context
-def show(ctx: click.Context, match: models.MatchDate) -> None:
-    result = models.MatchResult.find_one({"match_date": match})
-    if not result:
-        click.echo("No result found.")
-        ctx.exit()
-    click.echo(result.render())
-
-
-@ results.command("show-sqlite")
-@ click.argument("match", type=param_types.match.Match())
-@ click.pass_context
-def show_sqlite(ctx: click.Context, match: orm.MatchDate) -> None:
+def show(ctx: click.Context, match: orm.MatchDate) -> None:
     result = orm.MatchResult.one(match_date=match)
     if not result:
         click.echo("No result found.")

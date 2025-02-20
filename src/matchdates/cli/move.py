@@ -41,12 +41,12 @@ def move(match: orm.MatchDate, date: Optional[pendulum.Date], time: Optional[str
                 prefix = click.style("OLD: ", fg="red", bold=True)
             cal.add_to_date(
                 existing_match.date_time, prefix +
-                format.short_form_orm_match(existing_match)
+                format.short_form_match(existing_match)
             )
         cal.add_to_date(
             moved.date_time,
             click.style("NEW: ", fg="green", bold=True) +
-            format.short_form_orm_match(match),
+            format.short_form_match(match),
         )
 
     click.echo(click.style(cal.first.format("MMMM"),

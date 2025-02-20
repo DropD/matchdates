@@ -1,3 +1,12 @@
+"""
+This module is there only to record the existing results graph ideas.
+
+The plan is to explore ways to structure the data that certain queries more intuitive:
+ - player winrates
+ - head-to-head histories and stats
+ - player eligibilities
+ - etc
+"""
 import umongo
 
 from . import models
@@ -33,7 +42,8 @@ class PlayedMatch(umongo.Document):
 
     @property
     def won(self):
-        home_won = getattr(self.end.fetch(), self.event_attribute_name).fetch().home_won
+        home_won = getattr(
+            self.end.fetch(), self.event_attribute_name).fetch().home_won
         return (home_won and self.is_home_player) or (not home_won and not self.is_home_player)
 
 
@@ -61,7 +71,8 @@ def update_result_subgraph(result: models.MatchResult) -> None:
         for player in event.players["away"]:
             unique_players.add((player.name, away_team.name))
             if not PlayedMatch.find_one(
-                {"start": player, "end": result, "event": event_name[0], "number": event_name[1]}
+                {"start": player, "end": result,
+                    "event": event_name[0], "number": event_name[1]}
             ):
                 PlayedMatch(
                     start=player,
@@ -73,7 +84,8 @@ def update_result_subgraph(result: models.MatchResult) -> None:
         for player in event.players["home"]:
             unique_players.add((player.name, home_team.name))
             if not PlayedMatch.find_one(
-                {"start": player, "end": result, "event": event_name[0], "number": event_name[1]}
+                {"start": player, "end": result,
+                    "event": event_name[0], "number": event_name[1]}
             ):
                 PlayedMatch(
                     start=player,
@@ -86,5 +98,6 @@ def update_result_subgraph(result: models.MatchResult) -> None:
         player = models.Player.find_one({"name": player_name})
         if not PlayedMatch.find_one({"start": player, "end": result}):
             PlayedTeamMatch(
-                start=player, end=result, team=Team.find_one({"name": team_name})
+                start=player, end=result, team=Team.find_one(
+                    {"name": team_name})
             ).commit()

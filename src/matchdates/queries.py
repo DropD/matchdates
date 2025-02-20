@@ -10,47 +10,6 @@ from . import date_utils
 from . import orm
 
 
-def match_filter_by_team(team_name: str) -> dict[str, dict[str, str]]:
-    return {
-        "$or": [
-            {"home_team": team_name},
-            {"away_team": team_name},
-        ],
-    }
-
-
-def match_group_by_match_day() -> dict[str, dict[str, Any]]:
-    return {
-        "$group": {
-            "_id": {
-                "$dateToString": {
-                    "format": "%Y-%m-%d",
-                    "date": "$date",
-                },
-            },
-            "count": {"$sum": 1},
-            "matches": {"$addToSet": "$url"},
-        }
-    }
-
-
-def match_filter_around_day(day: pendulum.Date, plusminus: int = 0) -> dict[str, Any]:
-    return match_filter_from_to_day(
-        start=day - pendulum.duration(days=plusminus),
-        end=day + pendulum.duration(days=plusminus + 1),
-    )
-
-
-def match_filter_from_to_day(start: pendulum.Date, end: pendulum.Date) -> dict[str, Any]:
-    return {
-        "date": {"$gt": date_utils.date_to_datetime(start), "$lt": date_utils.date_to_datetime(end)}
-    }
-
-
-def match_list_field_values(field_name: str) -> dict[str, Any]:
-    return {"$group": {"_id": None, "teams": {"$addToSet": f"${field_name}"}}}
-
-
 class MatchClashSeverity(enum.IntEnum):
     UNPLAYABLE = 100
     WARNING = 10
@@ -82,7 +41,7 @@ class MatchClashResult:
         return MatchClashSeverity.PROBABLY_INTENTIONAL
 
 
-def sqla_match_clashes(team: orm.Team, date=pendulum.Date) -> Iterator[MatchClashResult]:
+def match_clashes(team: orm.Team, date=pendulum.Date) -> Iterator[MatchClashResult]:
     with orm.db.get_session() as session:
         groups = list(
             session.execute(

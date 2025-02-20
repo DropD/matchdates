@@ -2,7 +2,6 @@ import textwrap
 
 import click
 import pendulum
-import sqlalchemy as sqla
 
 from . import constants, styling
 from .main import main
@@ -17,7 +16,7 @@ def scan():
 
         for team in sorted(teams, key=lambda t: t.name):
             for clash_result in sorted(
-                queries.sqla_match_clashes(team=team, date=pendulum.today()),
+                queries.match_clashes(team=team, date=pendulum.today()),
                 key=lambda clash: clash.day,
             ):
                 if not all(

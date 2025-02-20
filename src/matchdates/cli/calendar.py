@@ -3,9 +3,8 @@ import dataclasses
 import click
 import pendulum
 import tabulate
-import sqlalchemy as sqla
 
-from .. import models, queries, format, orm
+from .. import format, orm
 from .main import main
 
 
@@ -57,32 +56,30 @@ class Month:
 @click.option("--year", type=int, default=pendulum.now().year)
 def calendar(month, rules, year):
     """Display calendar view of matches."""
-    with orm.db.get_session() as session:
-        cal = Month(first=pendulum.now().replace(
-            month=month, year=year, day=1))
-        matches = (
-            session.scalars(orm.MatchDate.select()
-                            .filter(orm.MatchDate.date_time > cal.first, orm.MatchDate.date_time < cal.last))
-            .all()
+    cal = Month(first=pendulum.now().replace(
+        month=month, year=year, day=1))
+    matches = orm.MatchDate.filter(
+        orm.MatchDate.date_time > cal.first, orm.MatchDate.date_time < cal.last
+    )
+
+    bcza = orm.Club.one_or_none(name="BC Zürich-Affoltern")
+    for match in matches:
+        postfix = ""
+        needsfix = click.style("X", fg="red", bold=True)
+        if rules == "all":
+            if (
+                pendulum.WeekDay(match.local_date_time.weekday()
+                                 ) == pendulum.WEDNESDAY
+                and match.home_team.club == bcza
+                and not match.home_team.team_nr == "S"
+            ):
+                postfix = needsfix
+            elif match.local_date_time.month == 4 and match.local_date_time.day > 17:
+                postfix = needsfix
+        cal.add_to_date(
+            match.local_date_time,
+            format.short_form_match(match) + " " + postfix
         )
-        bcza = session.scalars(
-            orm.Club.select().filter_by(name="BC Zürich-Affoltern")
-        ).one_or_none()
-        for match in matches:
-            postfix = ""
-            needsfix = click.style("X", fg="red", bold=True)
-            if rules == "all":
-                if (
-                    pendulum.WeekDay(match.local_date_time.weekday()
-                                     ) == pendulum.WEDNESDAY
-                    and match.home_team.club == bcza
-                    and not match.home_team.team_nr == "S"
-                ):
-                    postfix = needsfix
-                elif match.local_date_time.month == 4 and match.local_date_time.day > 17:
-                    postfix = needsfix
-            cal.add_to_date(match.local_date_time,
-                            format.short_form_orm_match(match) + " " + postfix)
 
     click.echo(click.style(cal.first.format("MMMM"),
                fg="green", bold=True, underline=True))

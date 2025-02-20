@@ -4,7 +4,7 @@ import click
 import tabulate
 import pendulum
 
-from . import models, orm
+from . import orm
 from . import settings
 
 
@@ -40,11 +40,12 @@ def color_short_team(short_team_name: str) -> str:
     return short_team_name
 
 
-def tabulate_match_dates(matches: list[models.MatchDate]) -> str:
+def tabulate_match_dates(matches: list[orm.MatchDate]) -> str:
     """
     Format a table for CLI output from a list of match dates.
     """
-    headers = ["Weekday", "Date", "Time", "Home Team", "Away Team", "Nr", "Location"]
+    headers = ["Weekday", "Date", "Time",
+               "Home Team", "Away Team", "Nr", "Location"]
     return tabulate.tabulate(
         [
             (
@@ -62,17 +63,33 @@ def tabulate_match_dates(matches: list[models.MatchDate]) -> str:
     )
 
 
-def short_form_match(match: models.MatchDate) -> str:
+def tabulate_match_results(results: list[orm.MatchResult]) -> str:
     """
-    Format match data to fit within a calendar cell.
+    Format a table for CLI output from a list of match results.
     """
-    short_home = color_short_team(shorten_team_name(match.home_team))
-    short_away = color_short_team(shorten_team_name(match.away_team))
-    time = pendulum.instance(match.date).format("HH:mm")
-    return f"{short_home} vs {short_away} {time}"
+    headers = [
+        "Weekday", "Date", "Home Team",
+        "", "", "", "Away Team", "URL"
+    ]
+    return tabulate.tabulate(
+        [
+            (
+                (d := pendulum.instance(r.match_date.local_date_time)).format("dd"),
+                d.date().isoformat(),
+                color_team(r.match_date.home_team.name),
+                r.home_points,
+                ":",
+                r.away_points,
+                color_team(r.match_date.away_team.name),
+                r.match_date.full_url,
+            )
+            for r in results
+        ],
+        headers=headers
+    )
 
 
-def short_form_orm_match(match: orm.MatchDate) -> str:
+def short_form_match(match: orm.MatchDate) -> str:
     """
     Format match data to fit within a calendar cell.
     """

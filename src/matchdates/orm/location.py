@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import difflib
 import typing
 
 import sqlalchemy as sqla
@@ -8,7 +7,6 @@ import sqlalchemy.orm
 from sqlalchemy.orm import Mapped
 
 from . import base
-from ..models import DocumentFromDataStatus, LocationFromDataResult
 
 
 if typing.TYPE_CHECKING:
@@ -29,26 +27,3 @@ class Location(base.IDMixin, base.Base):
     def abbrev(self) -> str:
         short_address = "; ".join(self.address.splitlines())[:128]
         return f"{self.name} @ {short_address}"
-
-
-def update_location(name: str, address: str, session: sqla.orm.Session) -> LocationFromDataResult:
-    existing = Location.one_or_none(name=name)
-    if existing:
-        if existing.address != address:
-            diff = difflib.unified_diff(
-                existing.address.splitlines(), address.splitlines(), fromfile="old", tofile="new"
-            )
-            existing.address = address
-            session.add(existing)
-            session.commit()
-            return LocationFromDataResult(
-                location=existing, status=DocumentFromDataStatus.CHANGED, diff=diff
-            )
-        return LocationFromDataResult(
-            location=existing, status=DocumentFromDataStatus.UNCHANGED, diff=[]
-        )
-    else:
-        new = Location(name=name, address=address)
-        session.add(new)
-        session.commit()
-        return LocationFromDataResult(location=new, status=DocumentFromDataStatus.NEW, diff=[])

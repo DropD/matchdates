@@ -6,7 +6,6 @@ from .upcoming import upcoming
 from .list_items import list_items
 from .show import show
 from .move import move
-from .graph import graph
 from . import calendar
 from . import results
 
@@ -22,5 +21,4 @@ __all__ = [
     "calendar",
     "move",
     "results",
-    "graph",
 ]
